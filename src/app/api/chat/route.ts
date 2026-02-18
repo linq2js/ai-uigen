@@ -6,19 +6,25 @@ import { buildFileManagerTool } from "@/lib/tools/file-manager";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { getLanguageModel } from "@/lib/provider";
-import { generationPrompt } from "@/lib/prompts/generation";
+import { buildSystemPrompt } from "@/lib/prompts/prompt-builder";
+import type { GenerationPreferences } from "@/lib/types/preferences";
 
 export async function POST(req: Request) {
   const {
     messages,
     files,
     projectId,
-  }: { messages: any[]; files: Record<string, FileNode>; projectId?: string } =
-    await req.json();
+    preferences,
+  }: {
+    messages: any[];
+    files: Record<string, FileNode>;
+    projectId?: string;
+    preferences?: Partial<GenerationPreferences>;
+  } = await req.json();
 
   messages.unshift({
     role: "system",
-    content: generationPrompt,
+    content: buildSystemPrompt(preferences || {}),
     providerOptions: {
       anthropic: { cacheControl: { type: "ephemeral" } },
     },
@@ -28,7 +34,7 @@ export async function POST(req: Request) {
   const fileSystem = new VirtualFileSystem();
   fileSystem.deserializeFromNodes(files);
 
-  const model = getLanguageModel();
+  const model = getLanguageModel(preferences?.aiModel);
   // Use fewer steps for mock provider to prevent repetition
   const apiKey = process.env.ANTHROPIC_API_KEY;
   const isMockProvider = !apiKey || !apiKey.startsWith("sk-ant-");

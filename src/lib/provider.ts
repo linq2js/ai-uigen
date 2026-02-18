@@ -5,7 +5,13 @@ import {
   LanguageModelV1Message,
 } from "@ai-sdk/provider";
 
-const MODEL = "claude-haiku-4-5";
+const DEFAULT_MODEL = "claude-haiku-4-5";
+
+const ALLOWED_MODELS: Record<string, string> = {
+  "Haiku 4.5": "claude-haiku-4-5",
+  "Sonnet 4.6": "claude-sonnet-4-6",
+  "Opus 4.6": "claude-opus-4-6",
+};
 
 export class MockLanguageModel implements LanguageModelV1 {
   readonly specificationVersion = "v1" as const;
@@ -506,7 +512,7 @@ export default function App() {
   }
 }
 
-export function getLanguageModel() {
+export function getLanguageModel(modelId?: string) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
 
   if (!apiKey || apiKey.trim() === "") {
@@ -522,5 +528,6 @@ export function getLanguageModel() {
     return new MockLanguageModel("mock-claude-sonnet-4-0");
   }
 
-  return anthropic(MODEL);
+  const resolvedModel = (modelId && ALLOWED_MODELS[modelId]) || DEFAULT_MODEL;
+  return anthropic(resolvedModel);
 }

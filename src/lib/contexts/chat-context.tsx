@@ -10,6 +10,8 @@ import { useChat as useAIChat } from "@ai-sdk/react";
 import { Message, ChatRequestOptions } from "ai";
 import { useFileSystem } from "./file-system-context";
 import { setHasAnonWork } from "@/lib/anon-work-tracker";
+import { usePreferences } from "@/hooks/use-preferences";
+import type { GenerationPreferences } from "@/lib/types/preferences";
 
 interface ChatContextProps {
   projectId?: string;
@@ -27,6 +29,12 @@ interface ChatContextType {
   ) => void;
   status: string;
   error: Error | undefined;
+  preferences: GenerationPreferences;
+  setPreference: <K extends keyof GenerationPreferences>(
+    key: K,
+    value: GenerationPreferences[K]
+  ) => void;
+  isDefault: <K extends keyof GenerationPreferences>(key: K) => boolean;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -37,6 +45,7 @@ export function ChatProvider({
   initialMessages = [],
 }: ChatContextProps & { children: ReactNode }) {
   const { fileSystem, handleToolCall } = useFileSystem();
+  const { preferences, setPreference, resetPreferences, isDefault } = usePreferences();
 
   const {
     messages,
@@ -52,6 +61,7 @@ export function ChatProvider({
     body: {
       files: fileSystem.serialize(),
       projectId,
+      preferences,
     },
     onToolCall: ({ toolCall }) => {
       handleToolCall(toolCall);
@@ -75,6 +85,9 @@ export function ChatProvider({
         handleSubmit,
         status,
         error,
+        preferences,
+        setPreference,
+        isDefault,
       }}
     >
       {children}

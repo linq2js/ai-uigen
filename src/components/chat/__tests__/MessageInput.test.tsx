@@ -17,7 +17,7 @@ test("renders with placeholder text", () => {
 
   render(<MessageInput {...mockProps} />);
   
-  const textarea = screen.getByPlaceholderText("Describe the React component you want to create...");
+  const textarea = screen.getByPlaceholderText("Describe the app or component you want to create...");
   expect(textarea).toBeDefined();
 });
 
@@ -46,7 +46,7 @@ test("calls handleInputChange when typing", async () => {
 
   render(<MessageInput {...mockProps} />);
   
-  const textarea = screen.getByPlaceholderText("Describe the React component you want to create...");
+  const textarea = screen.getByPlaceholderText("Describe the app or component you want to create...");
   await userEvent.type(textarea, "Hello");
   
   expect(handleInputChange).toHaveBeenCalled();

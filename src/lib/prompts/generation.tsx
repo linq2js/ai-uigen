@@ -57,6 +57,14 @@ Follow these styling principles to produce polished, modern UIs rather than basi
 * Use \`max-w-6xl mx-auto\` or similar for comfortable content widths
 * Consider asymmetric or magazine-style layouts over rigid symmetric grids when appropriate
 
+### Responsive & Mobile-First
+* Always build mobile-first — start with the small-screen layout and scale up with \`sm:\`, \`md:\`, \`lg:\` breakpoints
+* Use responsive utilities: \`flex-col md:flex-row\`, \`text-2xl md:text-4xl\`, \`p-4 md:p-8\`, \`grid-cols-1 md:grid-cols-2 lg:grid-cols-3\`
+* Ensure tap targets are at least 44×44px on mobile (\`min-h-[44px] min-w-[44px]\`)
+* Use \`w-full\` and \`max-w-*\` together so components adapt to any container width
+* Test that text is readable and layouts don't overflow on screens as narrow as 320px
+* Avoid fixed widths on containers — use responsive max-widths instead
+
 ### Micro-Animations
 * Add smooth transitions on interactive elements (\`transition-all duration-300 ease-out\`)
 * Use hover state transforms: scale, translateY, shadow changes

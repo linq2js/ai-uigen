@@ -3,6 +3,7 @@
 import { useEffect, useRef, useMemo } from "react";
 import { MessageList } from "./MessageList";
 import { MessageInput } from "./MessageInput";
+import { PreferenceToolbar } from "./PreferenceToolbar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChat } from "@/lib/contexts/chat-context";
 import { useFileSystem } from "@/lib/contexts/file-system-context";
@@ -10,7 +11,7 @@ import { useAttachments } from "@/hooks/use-attachments";
 
 export function ChatInterface() {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const { messages, input, setInput, handleInputChange, handleSubmit, status, error } = useChat();
+  const { messages, input, setInput, handleInputChange, handleSubmit, status, error, preferences, setPreference, isDefault } = useChat();
   const { getAllFiles, refreshTrigger } = useFileSystem();
   const { attachments, addFiles, removeAttachment, clearAttachments } = useAttachments();
 
@@ -45,6 +46,11 @@ export function ChatInterface() {
         </div>
       )}
       <div className="mt-4 flex-shrink-0">
+        <PreferenceToolbar
+          preferences={preferences}
+          setPreference={setPreference}
+          isDefault={isDefault}
+        />
         <MessageInput
           input={input}
           setInput={setInput}
