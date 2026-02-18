@@ -7,7 +7,7 @@ import {
   useEffect,
 } from "react";
 import { useChat as useAIChat } from "@ai-sdk/react";
-import { Message } from "ai";
+import { Message, ChatRequestOptions } from "ai";
 import { useFileSystem } from "./file-system-context";
 import { setHasAnonWork } from "@/lib/anon-work-tracker";
 
@@ -19,8 +19,12 @@ interface ChatContextProps {
 interface ChatContextType {
   messages: Message[];
   input: string;
+  setInput: (input: string) => void;
   handleInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
-  handleSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  handleSubmit: (
+    e: React.FormEvent<HTMLFormElement>,
+    options?: ChatRequestOptions
+  ) => void;
   status: string;
   error: Error | undefined;
 }
@@ -37,6 +41,7 @@ export function ChatProvider({
   const {
     messages,
     input,
+    setInput,
     handleInputChange,
     handleSubmit,
     status,
@@ -65,6 +70,7 @@ export function ChatProvider({
       value={{
         messages,
         input,
+        setInput,
         handleInputChange,
         handleSubmit,
         status,

@@ -1,14 +1,24 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import { MessageList } from "./MessageList";
 import { MessageInput } from "./MessageInput";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useChat } from "@/lib/contexts/chat-context";
+import { useFileSystem } from "@/lib/contexts/file-system-context";
+import { useAttachments } from "@/hooks/use-attachments";
 
 export function ChatInterface() {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const { messages, input, handleInputChange, handleSubmit, status, error } = useChat();
+  const { messages, input, setInput, handleInputChange, handleSubmit, status, error } = useChat();
+  const { getAllFiles, refreshTrigger } = useFileSystem();
+  const { attachments, addFiles, removeAttachment, clearAttachments } = useAttachments();
+
+  const vaultFiles = useMemo(
+    () => Array.from(getAllFiles().keys()),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [getAllFiles, refreshTrigger]
+  );
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -37,9 +47,15 @@ export function ChatInterface() {
       <div className="mt-4 flex-shrink-0">
         <MessageInput
           input={input}
+          setInput={setInput}
           handleInputChange={handleInputChange}
           handleSubmit={handleSubmit}
           isLoading={status === "submitted" || status === "streaming"}
+          attachments={attachments}
+          onAddFiles={addFiles}
+          onRemoveAttachment={removeAttachment}
+          onClearAttachments={clearAttachments}
+          vaultFiles={vaultFiles}
         />
       </div>
     </div>
