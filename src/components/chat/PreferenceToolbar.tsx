@@ -100,7 +100,7 @@ export function PreferenceToolbar({
   isDefault,
 }: PreferenceToolbarProps) {
   return (
-    <div className="flex flex-wrap gap-1.5 mb-1.5">
+    <div className="flex flex-wrap gap-1.5 pb-1.5 pt-2 px-3 bg-neutral-900 rounded-t-xl">
       {PREFERENCE_CATEGORIES.map((category) => {
         const currentValue = preferences[category.key] as string;
         const modified = !isDefault(category.key);

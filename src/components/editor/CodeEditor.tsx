@@ -118,6 +118,33 @@ export function CodeEditor({ readOnly = false }: { readOnly?: boolean }) {
     editorRef.current = editor;
     monacoRef.current = monaco;
 
+    const compilerOptions: Parameters<typeof monaco.languages.typescript.typescriptDefaults.setCompilerOptions>[0] = {
+      jsx: monaco.languages.typescript.JsxEmit.ReactJSX,
+      jsxImportSource: "react",
+      esModuleInterop: true,
+      allowNonTsExtensions: true,
+      moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
+      module: monaco.languages.typescript.ModuleKind.ESNext,
+      target: monaco.languages.typescript.ScriptTarget.ESNext,
+      allowJs: true,
+      strict: false,
+      noImplicitAny: false,
+      strictNullChecks: false,
+      typeRoots: [],
+    };
+    monaco.languages.typescript.typescriptDefaults.setCompilerOptions(compilerOptions);
+    monaco.languages.typescript.javascriptDefaults.setCompilerOptions(compilerOptions);
+
+    // Disable semantic validation — the sandbox has no type definitions (packages
+    // resolve via esm.sh at runtime), so all type-level diagnostics are false
+    // positives. Syntax validation stays on to catch real parse errors.
+    const diagnosticsOptions = {
+      noSemanticValidation: true,
+      noSyntaxValidation: false,
+    };
+    monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions(diagnosticsOptions);
+    monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions(diagnosticsOptions);
+
     syncModels(monaco);
 
     // Register definition provider for JS/TS languages
@@ -262,7 +289,7 @@ export function CodeEditor({ readOnly = false }: { readOnly?: boolean }) {
       theme="vs-dark"
       options={{
         minimap: { enabled: false },
-        fontSize: 14,
+        fontSize: 13,
         lineNumbers: "on",
         roundedSelection: false,
         scrollBeyondLastLine: false,

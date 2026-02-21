@@ -1,239 +1,161 @@
-import { GenerationPreferences, DEFAULT_PREFERENCES } from "@/lib/types/preferences";
+import {
+  GenerationPreferences,
+  DEFAULT_PREFERENCES,
+} from "@/lib/types/preferences";
+import type { SkillDescriptor } from "@/lib/types/skill";
 import { generationPrompt } from "./generation";
 
-export function buildSystemPrompt(preferences: Partial<GenerationPreferences>): string {
+interface AttachmentDescriptor {
+  name: string;
+  contentType: string;
+  isImage: boolean;
+}
+
+interface PromptOptions {
+  globalRules?: string;
+  projectRules?: string;
+  skills?: SkillDescriptor[];
+  attachments?: AttachmentDescriptor[];
+}
+
+// Short mandatory notes that tell the AI which preference is active and which skill to read.
+// The full guidelines live in the system skill files loaded via read_skill.
+const PREFERENCE_NOTES: Record<string, Record<string, string>> = {
+  cssFramework: {
+    "CSS Modules":
+      "CSS Framework: CSS Modules — MANDATORY. Do NOT use Tailwind. Read the 'system-css-modules' skill for full guidelines.",
+    "Styled Components":
+      "CSS Framework: Styled Components — MANDATORY. Do NOT use Tailwind. Read the 'system-styled-components' skill for full guidelines.",
+    "Vanilla CSS":
+      "CSS Framework: Vanilla CSS — MANDATORY. Do NOT use Tailwind. Read the 'system-vanilla-css' skill for full guidelines.",
+  },
+  designStyle: {
+    "Minimal/Clean":
+      "Design Style: Minimal/Clean — MANDATORY. Overrides the premium design guidelines. Read the 'system-minimal-clean' skill for full guidelines. You MUST follow them.",
+    Glassmorphism:
+      "Design Style: Glassmorphism — MANDATORY. Overrides the premium design guidelines. Read the 'system-glassmorphism' skill for full guidelines. You MUST follow them.",
+    "Material Design":
+      "Design Style: Material Design 3 — MANDATORY. Overrides the premium design guidelines. Read the 'system-material-design' skill for full guidelines. You MUST follow them.",
+    Brutalist:
+      "Design Style: Brutalist — MANDATORY. Overrides the premium design guidelines. Read the 'system-brutalist' skill for full guidelines. You MUST follow them.",
+  },
+  architectureStyle: {
+    "Clean Architecture":
+      "Architecture: Clean Architecture — MANDATORY. Read the 'system-clean-architecture' skill for full guidelines.",
+    "Atomic Design":
+      "Architecture: Atomic Design — MANDATORY. Read the 'system-atomic-design' skill for full guidelines.",
+    "Feature-Based":
+      "Architecture: Feature-Based — MANDATORY. Read the 'system-feature-based' skill for full guidelines.",
+  },
+  stateManagement: {
+    Zustand:
+      "State Management: Zustand — MANDATORY. Read the 'system-zustand' skill for full guidelines.",
+    Jotai:
+      "State Management: Jotai — MANDATORY. Read the 'system-jotai' skill for full guidelines.",
+    "Redux Toolkit":
+      "State Management: Redux Toolkit — MANDATORY. Read the 'system-redux-toolkit' skill for full guidelines.",
+    "React Context":
+      "State Management: React Context — MANDATORY. Read the 'system-react-context' skill for full guidelines.",
+  },
+  codeQuality: {
+    TypeScript:
+      "Code Quality: TypeScript — MANDATORY. Read the 'system-typescript' skill for full guidelines.",
+    "TypeScript Strict":
+      "Code Quality: TypeScript Strict — MANDATORY. Read the 'system-typescript-strict' skill for full guidelines.",
+  },
+};
+
+export function buildSystemPrompt(
+  preferences: Partial<GenerationPreferences>,
+  options?: PromptOptions
+): string {
   const prefs = { ...DEFAULT_PREFERENCES, ...preferences };
   const sections: string[] = [generationPrompt];
 
-  // CSS Framework
-  if (prefs.cssFramework !== DEFAULT_PREFERENCES.cssFramework) {
-    switch (prefs.cssFramework) {
-      case "CSS Modules":
-        sections.push(`
-## CSS Framework: CSS Modules
+  // Collect short mandatory notes for non-default preferences
+  const activeNotes: string[] = [];
 
-* Do NOT use Tailwind CSS classes
-* Use CSS Modules for all styling — create \`.module.css\` files alongside components
-* Import styles as \`import styles from './ComponentName.module.css'\`
-* Use \`className={styles.container}\` syntax for applying classes
-* Keep styles scoped to their component module
-`);
-        break;
-      case "Styled Components":
-        sections.push(`
-## CSS Framework: Styled Components
-
-* Do NOT use Tailwind CSS classes
-* Use styled-components for all styling
-* Import with \`import styled from 'styled-components'\`
-* Create styled elements like \`const Container = styled.div\`...\`\`
-* Keep styled components in the same file as the React component
-* Use props for dynamic styling where appropriate
-`);
-        break;
-      case "Vanilla CSS":
-        sections.push(`
-## CSS Framework: Vanilla CSS
-
-* Do NOT use Tailwind CSS classes
-* Use plain CSS files for all styling — create \`.css\` files alongside components
-* Import styles with \`import './ComponentName.css'\`
-* Use descriptive BEM-style class names (e.g. \`.card__title--active\`)
-* Keep styles scoped with component-specific prefixes
-`);
-        break;
+  for (const [key, noteMap] of Object.entries(PREFERENCE_NOTES)) {
+    const prefValue = prefs[key as keyof GenerationPreferences] as string;
+    const defaultValue = DEFAULT_PREFERENCES[
+      key as keyof GenerationPreferences
+    ] as string;
+    if (prefValue !== defaultValue && noteMap[prefValue]) {
+      activeNotes.push(noteMap[prefValue]);
     }
   }
 
-  // Design Style
-  if (prefs.designStyle !== DEFAULT_PREFERENCES.designStyle) {
-    switch (prefs.designStyle) {
-      case "Minimal/Clean":
-        sections.push(`
-## Design Style: Minimal/Clean
-
-Override the premium guidelines above. Follow a minimal design approach:
-* Use ample whitespace and clean layouts
-* Stick to a limited color palette — mostly neutrals with one accent color
-* Avoid gradients, shadows, and decorative elements
-* Use clean sans-serif typography with clear hierarchy
-* Prefer flat designs with subtle borders over shadows
-* Focus on content and readability over visual flair
-`);
-        break;
-      case "Glassmorphism":
-        sections.push(`
-## Design Style: Glassmorphism
-
-Override the premium guidelines above. Follow a glassmorphism design approach:
-* Use frosted glass effects: \`bg-white/10 backdrop-blur-xl\` (or CSS equivalent)
-* Apply subtle, semi-transparent borders: \`border border-white/20\`
-* Use vibrant gradient backgrounds behind glass elements
-* Add soft colored shadows that match the background
-* Layer multiple glass panels at different opacity levels
-* Keep text high-contrast against the glass background
-`);
-        break;
-      case "Material Design":
-        sections.push(`
-## Design Style: Material Design
-
-Override the premium guidelines above. Follow Material Design principles:
-* Use elevation-based shadow system (4 levels: sm, md, lg, xl)
-* Follow 8px grid spacing system
-* Use Material Design color system: primary, secondary, surface, error
-* Apply rounded corners consistently (4px for small, 8px for medium, 16px for large elements)
-* Use ripple/press effects on interactive elements where possible
-* Follow Material typography scale
-`);
-        break;
-      case "Brutalist":
-        sections.push(`
-## Design Style: Brutalist
-
-Override the premium guidelines above. Follow a brutalist web design approach:
-* Use bold, high-contrast black and white as primary colors
-* Apply thick, visible borders (2-4px solid black)
-* Use raw, monospace or system fonts
-* Avoid rounded corners — use sharp rectangular shapes
-* No gradients, no shadows, no blur effects
-* Embrace asymmetry and unconventional layouts
-* Use oversized typography for headings
-`);
-        break;
-    }
-  }
-
-  // Architecture Style
-  if (prefs.architectureStyle !== DEFAULT_PREFERENCES.architectureStyle) {
-    switch (prefs.architectureStyle) {
-      case "Clean Architecture":
-        sections.push(`
-## Architecture: Clean Architecture
-
-* Organize code into layers: /components (UI), /hooks (logic), /services (data), /utils (helpers)
-* Separate business logic from UI components using custom hooks
-* Keep components purely presentational where possible
-* Use a services layer for API calls and data transformation
-`);
-        break;
-      case "Atomic Design":
-        sections.push(`
-## Architecture: Atomic Design
-
-* Follow Atomic Design methodology with these directories:
-  * /components/atoms — Basic building blocks (Button, Input, Label, Icon)
-  * /components/molecules — Simple groups of atoms (FormField, SearchBar, MenuItem)
-  * /components/organisms — Complex UI sections (Header, Form, CardGrid)
-  * /components/templates — Page-level layouts
-* Start from atoms and compose upward
-`);
-        break;
-      case "Feature-Based":
-        sections.push(`
-## Architecture: Feature-Based
-
-* Organize code by feature/domain, not by type
-* Each feature gets its own directory: /features/auth, /features/dashboard, etc.
-* Each feature directory contains its own components, hooks, and utils
-* Shared code goes in /shared/components, /shared/hooks, /shared/utils
-`);
-        break;
-    }
-  }
-
-  // State Management
-  if (prefs.stateManagement !== DEFAULT_PREFERENCES.stateManagement) {
-    switch (prefs.stateManagement) {
-      case "Zustand":
-        sections.push(`
-## State Management: Zustand
-
-* Use Zustand for state management instead of React useState for shared state
-* Create stores with \`import { create } from 'zustand'\`
-* Keep stores focused and small — one store per feature/domain
-* Use useState only for local UI state (form inputs, toggles)
-`);
-        break;
-      case "Jotai":
-        sections.push(`
-## State Management: Jotai
-
-* Use Jotai for state management
-* Create atoms with \`import { atom, useAtom } from 'jotai'\`
-* Define atoms at module level, use them in components with \`useAtom\`
-* Derive computed state with derived atoms
-* Use useState only for local UI state
-`);
-        break;
-      case "Redux Toolkit":
-        sections.push(`
-## State Management: Redux Toolkit
-
-* Use Redux Toolkit for state management
-* Create slices with \`createSlice\` from \`@reduxjs/toolkit\`
-* Use \`useSelector\` and \`useDispatch\` hooks in components
-* Keep reducers pure and use RTK's immer-powered state updates
-* Use useState only for local UI state
-`);
-        break;
-      case "React Context":
-        sections.push(`
-## State Management: React Context
-
-* Use React Context + useReducer for shared state management
-* Create context providers for each domain area
-* Use useReducer for complex state, useContext for consuming
-* Keep contexts focused and avoid a single global context
-* Use useState only for local UI state
-`);
-        break;
-    }
-  }
-
-  // Code Quality / Language
-  if (prefs.codeQuality !== DEFAULT_PREFERENCES.codeQuality) {
-    switch (prefs.codeQuality) {
-      case "TypeScript":
-        sections.push(`
-## Code Quality: TypeScript
-
-* Write all code in TypeScript — use \`.tsx\` file extensions for components and \`.ts\` for utilities
-* Define interfaces for component props
-* Use proper typing for state, events, and function parameters
-* Avoid \`any\` type — use \`unknown\` or specific types instead
-`);
-        break;
-      case "TypeScript Strict":
-        sections.push(`
-## Code Quality: TypeScript Strict
-
-* Write all code in strict TypeScript — use \`.tsx\` file extensions for components and \`.ts\` for utilities
-* Define interfaces or types for ALL data structures, props, state, and function signatures
-* Never use \`any\` — always use specific types, generics, or \`unknown\` with type guards
-* Use discriminated unions for complex state
-* Mark optional properties explicitly with \`?\`
-* Use \`readonly\` for immutable data
-* Export types alongside their components
-`);
-        break;
-    }
-  }
-
-  // Accessibility
   if (prefs.accessibility) {
-    sections.push(`
-## Accessibility (A11y)
+    activeNotes.push(
+      "Accessibility: A11y enabled — MANDATORY. Read the 'system-accessibility' skill for full WCAG 2.1 AA guidelines."
+    );
+  }
 
-* Follow WCAG 2.1 AA guidelines
-* Use semantic HTML elements (nav, main, section, article, aside, header, footer)
-* Add ARIA labels, roles, and descriptions where semantic HTML is insufficient
-* Ensure all interactive elements are keyboard accessible (proper tab order, focus styles)
-* Use sufficient color contrast ratios (4.5:1 for normal text, 3:1 for large text)
-* Add alt text to all images
-* Use \`aria-live\` regions for dynamic content updates
-* Include skip navigation links
-* Ensure form inputs have associated labels
+  if (activeNotes.length > 0) {
+    sections.push(`
+## Active Preference Overrides
+
+The following preferences are active. You MUST read the referenced skills using the \`read_skill\` tool before generating code, as they contain mandatory guidelines you must follow.
+
+${activeNotes.map((n) => `- ${n}`).join("\n")}
+`);
+  }
+
+  // User-defined rules
+  const globalRules = options?.globalRules?.trim();
+  const projectRules = options?.projectRules?.trim();
+
+  if (globalRules) {
+    sections.push(`
+## User's Global Rules
+
+The following rules were defined by the user and apply to all their projects. Follow them unless they directly contradict the core system instructions above.
+
+${globalRules}
+`);
+  }
+
+  if (projectRules) {
+    sections.push(`
+## Project-Specific Rules
+
+The following rules were defined by the user for this specific project. They take priority over global rules when there is a conflict.
+
+${projectRules}
+`);
+  }
+
+  // Available skills
+  const skills = options?.skills;
+  if (skills && skills.length > 0) {
+    const skillList = skills
+      .map((s) => `- ${s.id}: "${s.name}" — ${s.description}`)
+      .join("\n");
+
+    sections.push(`
+## Available Skills
+
+You have access to specialized skills. Before responding, review the list below and use the \`read_skill\` tool to load full instructions for any skill relevant to the current request. Only load skills that are clearly relevant.
+
+${skillList}
+`);
+  }
+
+  // Available attachments from previous turns
+  const attachments = options?.attachments;
+  if (attachments && attachments.length > 0) {
+    const attList = attachments
+      .map(
+        (a) => `- "${a.name}" (${a.contentType})${a.isImage ? " [image]" : ""}`
+      )
+      .join("\n");
+
+    sections.push(`
+## Attachments from Previous Turns
+
+The user has attached files in earlier messages. Their content was stripped from history to save tokens. If you need to re-examine any of these files, use the \`read_attachment\` tool with the filename. The current turn's attachments (if any) are already visible inline.
+
+${attList}
 `);
   }
 

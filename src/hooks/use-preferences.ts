@@ -6,7 +6,7 @@ import {
   DEFAULT_PREFERENCES,
 } from "@/lib/types/preferences";
 
-const STORAGE_KEY = "uigen-preferences";
+const STORAGE_KEY = "artifex-preferences";
 
 export function usePreferences() {
   const [preferences, setPreferences] =

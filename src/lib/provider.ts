@@ -1,4 +1,4 @@
-import { anthropic } from "@ai-sdk/anthropic";
+import { anthropic, createAnthropic } from "@ai-sdk/anthropic";
 import {
   LanguageModelV1,
   LanguageModelV1StreamPart,
@@ -512,22 +512,32 @@ export default function App() {
   }
 }
 
-export function getLanguageModel(modelId?: string) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+export function getLanguageModel(modelId?: string, userApiKey?: string) {
+  // Prefer user-provided API key over server-side key
+  const effectiveKey = userApiKey?.startsWith("sk-ant-")
+    ? userApiKey
+    : process.env.ANTHROPIC_API_KEY;
 
-  if (!apiKey || apiKey.trim() === "") {
-    console.log("No ANTHROPIC_API_KEY found, using mock provider");
+  if (!effectiveKey || effectiveKey.trim() === "") {
+    console.log("No API key found, using mock provider");
     return new MockLanguageModel("mock-claude-sonnet-4-0");
   }
 
   // Validate key format - Anthropic keys start with "sk-ant-"
-  if (!apiKey.startsWith("sk-ant-")) {
+  if (!effectiveKey.startsWith("sk-ant-")) {
     console.warn(
-      "ANTHROPIC_API_KEY does not appear to be a valid Anthropic key (expected sk-ant-... format). Using mock provider."
+      "API key does not appear to be a valid Anthropic key (expected sk-ant-... format). Using mock provider."
     );
     return new MockLanguageModel("mock-claude-sonnet-4-0");
   }
 
   const resolvedModel = (modelId && ALLOWED_MODELS[modelId]) || DEFAULT_MODEL;
+
+  // If a user key was provided, create a custom provider instance
+  if (userApiKey?.startsWith("sk-ant-")) {
+    const customProvider = createAnthropic({ apiKey: userApiKey });
+    return customProvider(resolvedModel);
+  }
+
   return anthropic(resolvedModel);
 }

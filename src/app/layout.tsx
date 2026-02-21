@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "UIGen",
+  title: "Artifex",
   description: "Generate simple React apps with AI",
 };
 

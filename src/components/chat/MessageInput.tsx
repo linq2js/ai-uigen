@@ -221,7 +221,7 @@ export function MessageInput({
   return (
     <form
       onSubmit={onSubmit}
-      className="relative p-3 bg-neutral-900 border-t border-neutral-700/60"
+      className="relative p-3 bg-neutral-900 rounded-t-xl"
     >
       <div className="relative max-w-4xl mx-auto">
         <AttachmentBar

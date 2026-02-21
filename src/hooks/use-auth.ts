@@ -38,7 +38,7 @@ export function useAuth() {
 
     // If no projects exist, create a new one
     const newProject = await createProject({
-      name: `New Design #${~~(Math.random() * 100000)}`,
+      name: `Project #${~~(Math.random() * 100000)}`,
       messages: [],
       data: {},
     });

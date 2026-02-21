@@ -18,7 +18,7 @@ export type ArchitectureStyle =
   | "Feature-Based";
 
 export type StateManagement =
-  | "React useState"
+  | "Auto"
   | "Zustand"
   | "Jotai"
   | "Redux Toolkit"
@@ -39,20 +39,25 @@ export interface GenerationPreferences {
   codeQuality: CodeQualityLanguage;
   aiModel: AIModel;
   accessibility: boolean;
+  maxSteps: number;
 }
 
 export const DEFAULT_PREFERENCES: GenerationPreferences = {
   cssFramework: "Tailwind CSS",
   designStyle: "Premium/Modern",
   architectureStyle: "Flat",
-  stateManagement: "React useState",
+  stateManagement: "Auto",
   codeQuality: "JavaScript",
   aiModel: "Haiku 4.5",
   accessibility: false,
+  maxSteps: 40,
 };
 
+export const MAX_STEPS_MIN = 4;
+export const MAX_STEPS_MAX = 120;
+
 export interface PreferenceCategory {
-  key: keyof Omit<GenerationPreferences, "accessibility">;
+  key: keyof Omit<GenerationPreferences, "accessibility" | "maxSteps">;
   label: string;
   options: string[];
 }
@@ -83,7 +88,7 @@ export const PREFERENCE_CATEGORIES: PreferenceCategory[] = [
     key: "stateManagement",
     label: "State",
     options: [
-      "React useState",
+      "Auto",
       "Zustand",
       "Jotai",
       "Redux Toolkit",

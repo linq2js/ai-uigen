@@ -6,7 +6,7 @@ import {
   createImportMap,
   createPreviewHTML,
 } from "@/lib/transform/jsx-transformer";
-import { AlertCircle, Monitor, Smartphone, Tablet, ChevronDown, RotateCw } from "lucide-react";
+import { AlertCircle, Monitor, Smartphone, Tablet, ChevronDown, RotateCw, RefreshCw } from "lucide-react";
 import {
   Popover,
   PopoverTrigger,
@@ -49,11 +49,12 @@ export function PreviewFrame() {
   const [customHeight, setCustomHeight] = useState(667);
   const [isRotated, setIsRotated] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [iframeKey, setIframeKey] = useState(0);
 
   // Hydrate device state from localStorage
   useEffect(() => {
     try {
-      const stored = localStorage.getItem("uigen-device");
+      const stored = localStorage.getItem("artifex-device");
       if (stored) {
         const parsed = JSON.parse(stored);
         if (parsed.deviceName) {
@@ -147,7 +148,7 @@ export function PreviewFrame() {
 
   const persistDevice = (deviceName: string | null, w: number, h: number, rotated: boolean) => {
     try {
-      localStorage.setItem("uigen-device", JSON.stringify({ deviceName, customWidth: w, customHeight: h, isRotated: rotated }));
+      localStorage.setItem("artifex-device", JSON.stringify({ deviceName, customWidth: w, customHeight: h, isRotated: rotated }));
     } catch {
       // Ignore
     }
@@ -298,6 +299,15 @@ export function PreviewFrame() {
       >
         <RotateCw className="h-3.5 w-3.5" />
       </button>
+
+      {/* Refresh button */}
+      <button
+        onClick={() => setIframeKey((k) => k + 1)}
+        className="p-1 rounded hover:bg-neutral-700 transition-colors text-neutral-500 hover:text-neutral-300"
+        title="Refresh preview"
+      >
+        <RefreshCw className="h-3.5 w-3.5" />
+      </button>
     </div>
   );
 
@@ -324,7 +334,7 @@ export function PreviewFrame() {
                 </svg>
               </div>
               <h3 className="text-lg font-semibold text-neutral-100 mb-2">
-                Welcome to UI Generator
+                Welcome to Artifex
               </h3>
               <p className="text-sm text-neutral-400 mb-3">
                 Start building React components with AI assistance
@@ -366,31 +376,19 @@ export function PreviewFrame() {
         ref={containerRef}
         className="flex-1 overflow-auto bg-neutral-800 flex items-start justify-center"
       >
-        {isResponsive ? (
+        <div
+          className={isResponsive ? "w-full h-full" : "bg-white border border-neutral-700 my-4 mx-auto shrink-0"}
+          style={isResponsive ? undefined : { width: displayWidth, height: displayHeight }}
+        >
           <iframe
+            key={iframeKey}
             ref={iframeRef}
             srcDoc={previewHTML}
             sandbox="allow-scripts allow-same-origin allow-forms"
-            className="w-full h-full border-0 bg-white"
+            className={`w-full h-full border-0 ${isResponsive ? "bg-white" : ""}`}
             title="Preview"
           />
-        ) : (
-          <div
-            className="bg-white border border-neutral-700 my-4 mx-auto shrink-0"
-            style={{
-              width: displayWidth,
-              height: displayHeight,
-            }}
-          >
-            <iframe
-              ref={iframeRef}
-              srcDoc={previewHTML}
-              sandbox="allow-scripts allow-same-origin allow-forms"
-              className="w-full h-full border-0"
-              title="Preview"
-            />
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );
