@@ -44,8 +44,8 @@ function CategoryChip({
           className={cn(
             "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer",
             modified
-              ? "border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"
-              : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50"
+              ? "border-blue-500/40 bg-blue-500/15 text-blue-400 hover:bg-blue-500/20"
+              : "border-neutral-700 bg-neutral-800 text-neutral-400 hover:bg-neutral-700"
           )}
         >
           <span className="uppercase tracking-wider text-[10px] opacity-60">
@@ -74,15 +74,15 @@ function CategoryChip({
             className={cn(
               "flex items-center w-full gap-2 px-3 py-1.5 text-sm rounded-md transition-colors cursor-pointer",
               option === currentValue
-                ? "bg-blue-50 text-blue-700 font-medium"
-                : "text-neutral-700 hover:bg-neutral-100"
+                ? "bg-blue-500/15 text-blue-400 font-medium"
+                : "text-neutral-300 hover:bg-neutral-700"
             )}
           >
             <Check
               className={cn(
                 "w-3.5 h-3.5 flex-shrink-0",
                 option === currentValue
-                  ? "opacity-100 text-blue-600"
+                  ? "opacity-100 text-blue-400"
                   : "opacity-0"
               )}
             />
@@ -100,7 +100,7 @@ export function PreferenceToolbar({
   isDefault,
 }: PreferenceToolbarProps) {
   return (
-    <div className="flex flex-wrap gap-1.5 mb-2">
+    <div className="flex flex-wrap gap-1.5 mb-1.5">
       {PREFERENCE_CATEGORIES.map((category) => {
         const currentValue = preferences[category.key] as string;
         const modified = !isDefault(category.key);
@@ -123,8 +123,8 @@ export function PreferenceToolbar({
         className={cn(
           "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer",
           preferences.accessibility
-            ? "border-green-300 bg-green-50 text-green-700 hover:bg-green-100"
-            : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50"
+            ? "border-green-500/40 bg-green-500/15 text-green-400 hover:bg-green-500/20"
+            : "border-neutral-700 bg-neutral-800 text-neutral-400 hover:bg-neutral-700"
         )}
       >
         <Accessibility className="w-3.5 h-3.5" />

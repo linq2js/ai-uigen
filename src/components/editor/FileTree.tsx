@@ -45,8 +45,8 @@ function FileTreeNode({ node, level }: FileTreeNodeProps) {
     <div>
       <div
         className={cn(
-          "flex items-center gap-2 px-2 py-1.5 hover:bg-gray-100 cursor-pointer text-sm transition-colors",
-          selectedFile === node.path && "bg-blue-50 text-blue-600"
+          "flex items-center gap-2 px-2 py-1.5 hover:bg-neutral-700 cursor-pointer text-sm transition-colors",
+          selectedFile === node.path && "bg-blue-500/15 text-blue-400"
         )}
         style={{ paddingLeft: `${level * 12 + 8}px` }}
         onClick={handleClick}
@@ -54,23 +54,23 @@ function FileTreeNode({ node, level }: FileTreeNodeProps) {
         {node.type === "directory" ? (
           <>
             {isExpanded ? (
-              <ChevronDown className="h-3.5 w-3.5 shrink-0 text-gray-500" />
+              <ChevronDown className="h-3.5 w-3.5 shrink-0 text-neutral-500" />
             ) : (
-              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-gray-500" />
+              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-neutral-500" />
             )}
             {isExpanded ? (
-              <FolderOpen className="h-4 w-4 shrink-0 text-blue-500" />
+              <FolderOpen className="h-4 w-4 shrink-0 text-blue-400" />
             ) : (
-              <Folder className="h-4 w-4 shrink-0 text-blue-500" />
+              <Folder className="h-4 w-4 shrink-0 text-blue-400" />
             )}
           </>
         ) : (
           <>
             <div className="w-3.5" />
-            <FileCode className="h-4 w-4 shrink-0 text-gray-400" />
+            <FileCode className="h-4 w-4 shrink-0 text-neutral-500" />
           </>
         )}
-        <span className="truncate text-gray-700">{node.name}</span>
+        <span className="truncate text-neutral-300">{node.name}</span>
       </div>
       {node.type === "directory" && isExpanded && children.length > 0 && (
         <div>
@@ -90,9 +90,9 @@ export function FileTree() {
   if (!rootNode || !rootNode.children || rootNode.children.size === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-4 text-center">
-        <Folder className="h-12 w-12 text-gray-300 mb-3" />
-        <p className="text-sm text-gray-500">No files yet</p>
-        <p className="text-xs text-gray-400 mt-1">Files will appear here</p>
+        <Folder className="h-12 w-12 text-neutral-600 mb-3" />
+        <p className="text-sm text-neutral-400">No files yet</p>
+        <p className="text-xs text-neutral-500 mt-1">Files will appear here</p>
       </div>
     );
   }

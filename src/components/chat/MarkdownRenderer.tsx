@@ -13,7 +13,7 @@ export function MarkdownRenderer({
   className,
 }: MarkdownRendererProps) {
   return (
-    <div className={cn("prose leading-tight max-w-none", className)}>
+    <div className={cn("prose prose-invert leading-tight max-w-none prose-p:text-neutral-200 prose-li:text-neutral-200 prose-strong:text-neutral-100 prose-headings:text-neutral-100", className)}>
       <ReactMarkdown
         components={{
           code: ({ children, className, ...props }) => {
@@ -23,7 +23,7 @@ export function MarkdownRenderer({
             if (isInline) {
               return (
                 <code
-                  className="not-prose text-sm px-1 py-0.5 rounded-sm bg-neutral-100 text-neutral-900 font-mono"
+                  className="not-prose text-sm px-1 py-0.5 rounded-sm bg-neutral-800 text-neutral-200 font-mono"
                   {...props}
                 >
                   {children}

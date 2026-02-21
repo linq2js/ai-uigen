@@ -221,7 +221,7 @@ export function MessageInput({
   return (
     <form
       onSubmit={onSubmit}
-      className="relative p-4 bg-white border-t border-neutral-200/60"
+      className="relative p-3 bg-neutral-900 border-t border-neutral-700/60"
     >
       <div className="relative max-w-4xl mx-auto">
         <AttachmentBar
@@ -250,7 +250,7 @@ export function MessageInput({
             onPaste={handlePaste}
             placeholder="Describe the app or component you want to create..."
             disabled={isLoading}
-            className="w-full min-h-[80px] max-h-[200px] pl-4 pr-24 py-3.5 rounded-xl border border-neutral-200 bg-neutral-50/50 text-neutral-900 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500/50 focus:bg-white transition-all placeholder:text-neutral-400 text-[15px] font-normal shadow-sm"
+            className="w-full min-h-[60px] max-h-[200px] pl-4 pr-24 py-2.5 rounded-xl border border-neutral-700 bg-neutral-800 text-neutral-100 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all placeholder:text-neutral-500 text-[15px] font-normal"
             rows={3}
           />
           <div className="absolute right-3 bottom-3 flex items-center gap-1">
@@ -258,23 +258,23 @@ export function MessageInput({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={isLoading}
-              className="p-2.5 rounded-lg transition-all hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="p-2.5 rounded-lg transition-all hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed"
               aria-label="Attach file"
             >
-              <Paperclip className="h-4 w-4 text-neutral-400 hover:text-neutral-600" />
+              <Paperclip className="h-4 w-4 text-neutral-500 hover:text-neutral-300" />
             </button>
             <button
               type="submit"
               disabled={
                 isLoading || (!input.trim() && attachments.length === 0)
               }
-              className="p-2.5 rounded-lg transition-all hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent group"
+              className="p-2.5 rounded-lg transition-all hover:bg-blue-500/15 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent group"
             >
               <Send
                 className={`h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 ${
                   isLoading || (!input.trim() && attachments.length === 0)
-                    ? "text-neutral-300"
-                    : "text-blue-600"
+                    ? "text-neutral-600"
+                    : "text-blue-400"
                 }`}
               />
             </button>

@@ -15,7 +15,7 @@ interface PendingNavigation {
   column: number;
 }
 
-export function CodeEditor() {
+export function CodeEditor({ readOnly = false }: { readOnly?: boolean }) {
   const {
     selectedFile,
     setSelectedFile,
@@ -266,7 +266,7 @@ export function CodeEditor() {
         lineNumbers: "on",
         roundedSelection: false,
         scrollBeyondLastLine: false,
-        readOnly: false,
+        readOnly,
         automaticLayout: true,
         wordWrap: "on",
         padding: { top: 16, bottom: 16 },

@@ -20,6 +20,7 @@ export async function getProjects() {
     select: {
       id: true,
       name: true,
+      published: true,
       createdAt: true,
       updatedAt: true,
     },

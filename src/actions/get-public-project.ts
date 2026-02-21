@@ -1,24 +1,14 @@
 "use server";
 
-import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-export async function getProject(projectId: string) {
-  const session = await getSession();
-  
-  if (!session) {
-    throw new Error("Unauthorized");
-  }
-
+export async function getPublicProject(projectId: string) {
   const project = await prisma.project.findUnique({
-    where: {
-      id: projectId,
-      userId: session.userId,
-    },
+    where: { id: projectId, published: true },
   });
 
   if (!project) {
-    throw new Error("Project not found");
+    return null;
   }
 
   return {
@@ -26,7 +16,6 @@ export async function getProject(projectId: string) {
     name: project.name,
     messages: JSON.parse(project.messages),
     data: JSON.parse(project.data),
-    published: project.published,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
   };

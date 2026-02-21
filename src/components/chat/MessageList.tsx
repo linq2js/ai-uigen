@@ -4,6 +4,7 @@ import { Message } from "ai";
 import { cn } from "@/lib/utils";
 import { User, Bot, Loader2, FileCode, Pencil, Eye, FolderEdit, Trash2, FilePlus, Undo2, FileText } from "lucide-react";
 import { MarkdownRenderer } from "./MarkdownRenderer";
+import { useFileSystem } from "@/lib/contexts/file-system-context";
 
 function getToolDisplay(tool: { toolName: string; args?: Record<string, unknown>; state: string }) {
   const args = tool.args || {};
@@ -14,71 +15,78 @@ function getToolDisplay(tool: { toolName: string; args?: Record<string, unknown>
   if (tool.toolName === "str_replace_editor") {
     switch (command) {
       case "create":
-        return { label: "Create file", detail: shortPath, icon: FilePlus };
+        return { label: "Create file", detail: shortPath, path, icon: FilePlus };
       case "str_replace":
-        return { label: "Edit file", detail: shortPath, icon: Pencil };
+        return { label: "Edit file", detail: shortPath, path, icon: Pencil };
       case "view":
-        return { label: "View file", detail: shortPath, icon: Eye };
+        return { label: "View file", detail: shortPath, path, icon: Eye };
       case "insert":
-        return { label: "Insert code", detail: shortPath, icon: FileCode };
+        return { label: "Insert code", detail: shortPath, path, icon: FileCode };
       case "undo_edit":
-        return { label: "Undo edit", detail: shortPath, icon: Undo2 };
+        return { label: "Undo edit", detail: shortPath, path, icon: Undo2 };
       default:
-        return { label: "Edit file", detail: shortPath, icon: FileCode };
+        return { label: "Edit file", detail: shortPath, path, icon: FileCode };
     }
   }
 
   if (tool.toolName === "file_manager") {
     switch (command) {
       case "rename":
-        return { label: "Rename file", detail: shortPath, icon: FolderEdit };
+        return { label: "Rename file", detail: shortPath, path, icon: FolderEdit };
       case "delete":
-        return { label: "Delete file", detail: shortPath, icon: Trash2 };
+        return { label: "Delete file", detail: shortPath, path, icon: Trash2 };
       default:
-        return { label: "Manage files", detail: shortPath, icon: FolderEdit };
+        return { label: "Manage files", detail: shortPath, path, icon: FolderEdit };
     }
   }
 
-  return { label: tool.toolName, detail: undefined, icon: FileCode };
+  return { label: tool.toolName, detail: undefined, path: undefined, icon: FileCode };
 }
 
 interface MessageListProps {
   messages: Message[];
   isLoading?: boolean;
+  onSwitchToCode?: () => void;
 }
 
-export function MessageList({ messages, isLoading }: MessageListProps) {
+export function MessageList({ messages, isLoading, onSwitchToCode }: MessageListProps) {
+  const { setSelectedFile } = useFileSystem();
+
+  const handleFileClick = (path: string) => {
+    setSelectedFile(path);
+    onSwitchToCode?.();
+  };
   if (messages.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full px-4 text-center">
-        <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-50 mb-4 shadow-sm">
-          <Bot className="h-7 w-7 text-blue-600" />
+        <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-blue-500/15 mb-4">
+          <Bot className="h-6 w-6 text-blue-400" />
         </div>
-        <p className="text-neutral-900 font-semibold text-lg mb-2">Start a conversation to generate React components</p>
-        <p className="text-neutral-500 text-sm max-w-sm">I can help you create buttons, forms, cards, and more</p>
+        <p className="text-neutral-100 font-semibold text-lg mb-2">Start a conversation to generate React components</p>
+        <p className="text-neutral-400 text-sm max-w-sm">I can help you create buttons, forms, cards, and more</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto px-4 py-6">
-      <div className="space-y-6 max-w-4xl mx-auto w-full">
+    <div className="flex flex-col h-full overflow-y-auto px-3 py-3">
+      <div className="space-y-4 max-w-4xl mx-auto w-full">
         {messages.map((message) => (
           <div
             key={message.id || message.content}
             className={cn(
-              "flex gap-4",
+              "flex gap-3",
               message.role === "user" ? "justify-end" : "justify-start"
             )}
           >
             {message.role === "assistant" && (
               <div className="flex-shrink-0">
-                <div className="w-9 h-9 rounded-lg bg-white border border-neutral-200 shadow-sm flex items-center justify-center">
-                  <Bot className="h-4.5 w-4.5 text-neutral-700" />
+                <div className="w-7 h-7 rounded-lg bg-neutral-800 border border-neutral-700 flex items-center justify-center">
+                  <Bot className="h-4 w-4 text-neutral-300" />
                 </div>
               </div>
             )}
-            
+
             <div className={cn(
               "flex flex-col gap-2 max-w-[85%]",
               message.role === "user" ? "items-end" : "items-start"
@@ -103,10 +111,10 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
                 </div>
               )}
               <div className={cn(
-                "rounded-xl px-4 py-3",
+                "rounded-xl px-3 py-2",
                 message.role === "user"
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "bg-white text-neutral-900 border border-neutral-200 shadow-sm"
+                  ? "bg-blue-600 text-white"
+                  : "bg-neutral-800 text-neutral-100 border border-neutral-700"
               )}>
                 <div className="text-sm">
                   {message.parts ? (
@@ -125,9 +133,9 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
                             );
                           case "reasoning":
                             return (
-                              <div key={partIndex} className="mt-3 p-3 bg-white/50 rounded-md border border-neutral-200">
-                                <span className="text-xs font-medium text-neutral-600 block mb-1">Reasoning</span>
-                                <span className="text-sm text-neutral-700">{part.reasoning}</span>
+                              <div key={partIndex} className="mt-3 p-3 bg-neutral-700/50 rounded-md border border-neutral-600">
+                                <span className="text-xs font-medium text-neutral-400 block mb-1">Reasoning</span>
+                                <span className="text-sm text-neutral-300">{part.reasoning}</span>
                               </div>
                             );
                           case "tool-invocation":
@@ -136,27 +144,34 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
                             const ToolIcon = display.icon;
                             const isDone = toolInvocation.state === "result" && toolInvocation.result;
                             return (
-                              <div key={partIndex} className="inline-flex items-center gap-2 mt-2 px-3 py-1.5 bg-neutral-50 rounded-lg text-xs border border-neutral-200">
+                              <div key={partIndex} className="inline-flex items-center gap-2 mt-2 px-3 py-1.5 bg-neutral-800 rounded-lg text-xs border border-neutral-700">
                                 {isDone ? (
                                   <div className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0"></div>
                                 ) : (
-                                  <Loader2 className="w-3 h-3 animate-spin text-blue-600 flex-shrink-0" />
+                                  <Loader2 className="w-3 h-3 animate-spin text-blue-400 flex-shrink-0" />
                                 )}
-                                <ToolIcon className="w-3 h-3 text-neutral-500 flex-shrink-0" />
-                                <span className="text-neutral-700 font-medium">{display.label}</span>
-                                {display.detail && (
-                                  <span className="text-neutral-400 font-mono">{display.detail}</span>
-                                )}
+                                <ToolIcon className="w-3 h-3 text-neutral-400 flex-shrink-0" />
+                                <span className="text-neutral-300 font-medium">{display.label}</span>
+                                {display.detail && display.path ? (
+                                  <button
+                                    onClick={() => handleFileClick(display.path!)}
+                                    className="text-blue-400 font-mono hover:text-blue-300 hover:underline cursor-pointer transition-colors"
+                                  >
+                                    {display.detail}
+                                  </button>
+                                ) : display.detail ? (
+                                  <span className="text-neutral-500 font-mono">{display.detail}</span>
+                                ) : null}
                               </div>
                             );
                           case "source":
                             return (
-                              <div key={partIndex} className="mt-2 text-xs text-neutral-500">
+                              <div key={partIndex} className="mt-2 text-xs text-neutral-400">
                                 Source: {JSON.stringify(part.source)}
                               </div>
                             );
                           case "step-start":
-                            return partIndex > 0 ? <hr key={partIndex} className="my-3 border-neutral-200" /> : null;
+                            return partIndex > 0 ? <hr key={partIndex} className="my-3 border-neutral-700" /> : null;
                           default:
                             return null;
                         }
@@ -164,7 +179,7 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
                       {isLoading &&
                         message.role === "assistant" &&
                         messages.indexOf(message) === messages.length - 1 && (
-                          <div className="flex items-center gap-2 mt-3 text-neutral-500">
+                          <div className="flex items-center gap-2 mt-3 text-neutral-400">
                             <Loader2 className="h-3 w-3 animate-spin" />
                             <span className="text-sm">Generating...</span>
                           </div>
@@ -179,7 +194,7 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
                   ) : isLoading &&
                     message.role === "assistant" &&
                     messages.indexOf(message) === messages.length - 1 ? (
-                    <div className="flex items-center gap-2 text-neutral-500">
+                    <div className="flex items-center gap-2 text-neutral-400">
                       <Loader2 className="h-3 w-3 animate-spin" />
                       <span className="text-sm">Generating...</span>
                     </div>
@@ -187,11 +202,11 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
                 </div>
               </div>
             </div>
-            
+
             {message.role === "user" && (
               <div className="flex-shrink-0">
-                <div className="w-9 h-9 rounded-lg bg-blue-600 shadow-sm flex items-center justify-center">
-                  <User className="h-4.5 w-4.5 text-white" />
+                <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
+                  <User className="h-4 w-4 text-white" />
                 </div>
               </div>
             )}

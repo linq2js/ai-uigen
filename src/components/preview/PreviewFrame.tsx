@@ -202,11 +202,11 @@ export function PreviewFrame() {
   const isResponsive = selectedDevice === null;
 
   const deviceToolbar = (
-    <div className="flex items-center gap-2 px-3 py-1.5 border-b border-neutral-200 bg-neutral-50/80 text-sm shrink-0">
+    <div className="flex items-center gap-2 px-3 py-1.5 border-b border-neutral-700 bg-neutral-900 text-sm shrink-0">
       {/* Device selector */}
       <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
         <PopoverTrigger asChild>
-          <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-md hover:bg-neutral-100 transition-colors text-neutral-700 font-medium">
+          <button className="flex items-center gap-1.5 px-2.5 py-1 rounded-md hover:bg-neutral-700 transition-colors text-neutral-300 font-medium">
             {selectedDevice ? (
               <>
                 <selectedDevice.icon className="h-3.5 w-3.5 text-neutral-500" />
@@ -218,7 +218,7 @@ export function PreviewFrame() {
                 <span>Responsive</span>
               </>
             )}
-            <ChevronDown className="h-3 w-3 text-neutral-400" />
+            <ChevronDown className="h-3 w-3 text-neutral-500" />
           </button>
         </PopoverTrigger>
         <PopoverContent align="start" className="w-56 p-1.5">
@@ -227,8 +227,8 @@ export function PreviewFrame() {
             onClick={() => handleSelectDevice(null)}
             className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm transition-colors ${
               isResponsive
-                ? "bg-blue-50 text-blue-700"
-                : "hover:bg-neutral-100 text-neutral-700"
+                ? "bg-blue-500/15 text-blue-400"
+                : "hover:bg-neutral-700 text-neutral-300"
             }`}
           >
             <Monitor className="h-4 w-4" />
@@ -241,7 +241,7 @@ export function PreviewFrame() {
             const label = category === "phone" ? "Phones" : category === "tablet" ? "Tablets" : "Desktops";
             return (
               <div key={category}>
-                <div className="px-2.5 pt-2.5 pb-1 text-[10px] uppercase tracking-wider text-neutral-400 font-semibold">
+                <div className="px-2.5 pt-2.5 pb-1 text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">
                   {label}
                 </div>
                 {devices.map((device) => {
@@ -253,13 +253,13 @@ export function PreviewFrame() {
                       onClick={() => handleSelectDevice(device)}
                       className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm transition-colors ${
                         isSelected
-                          ? "bg-blue-50 text-blue-700"
-                          : "hover:bg-neutral-100 text-neutral-700"
+                          ? "bg-blue-500/15 text-blue-400"
+                          : "hover:bg-neutral-700 text-neutral-300"
                       }`}
                     >
                       <Icon className="h-4 w-4" />
-                      <span className="flex-1 text-left">{device.name}</span>
-                      <span className="text-[11px] text-neutral-400 font-mono tabular-nums">
+                      <span className="flex-1 text-left whitespace-nowrap">{device.name}</span>
+                      <span className="text-[11px] text-neutral-500 font-mono tabular-nums">
                         {device.width}x{device.height}
                       </span>
                     </button>
@@ -271,7 +271,7 @@ export function PreviewFrame() {
         </PopoverContent>
       </Popover>
 
-      <div className="h-4 w-px bg-neutral-200" />
+      <div className="h-4 w-px bg-neutral-700" />
 
       {/* Dimensions display */}
       <div className="flex items-center gap-1.5 text-neutral-500">
@@ -279,21 +279,21 @@ export function PreviewFrame() {
           type="number"
           value={isResponsive ? customWidth : displayWidth}
           onChange={(e) => handleWidthChange(e.target.value)}
-          className="w-12 px-1 py-0.5 text-center text-xs font-mono tabular-nums bg-white border border-neutral-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500/30 focus:border-blue-400"
+          className="w-12 px-1 py-0.5 text-center text-xs font-mono tabular-nums bg-neutral-800 border border-neutral-700 rounded text-neutral-300 focus:outline-none focus:ring-1 focus:ring-blue-500/30 focus:border-blue-500/50"
         />
-        <span className="text-neutral-300 text-xs select-none">&times;</span>
+        <span className="text-neutral-600 text-xs select-none">&times;</span>
         <input
           type="number"
           value={isResponsive ? customHeight : displayHeight}
           onChange={(e) => handleHeightChange(e.target.value)}
-          className="w-12 px-1 py-0.5 text-center text-xs font-mono tabular-nums bg-white border border-neutral-200 rounded focus:outline-none focus:ring-1 focus:ring-blue-500/30 focus:border-blue-400"
+          className="w-12 px-1 py-0.5 text-center text-xs font-mono tabular-nums bg-neutral-800 border border-neutral-700 rounded text-neutral-300 focus:outline-none focus:ring-1 focus:ring-blue-500/30 focus:border-blue-500/50"
         />
       </div>
 
       {/* Rotate button */}
       <button
         onClick={handleRotate}
-        className="p-1 rounded hover:bg-neutral-100 transition-colors text-neutral-400 hover:text-neutral-600"
+        className="p-1 rounded hover:bg-neutral-700 transition-colors text-neutral-500 hover:text-neutral-300"
         title="Rotate"
       >
         <RotateCw className="h-3.5 w-3.5" />
@@ -306,11 +306,11 @@ export function PreviewFrame() {
       return (
         <div className="h-full flex flex-col">
           {deviceToolbar}
-          <div className="flex-1 flex items-center justify-center p-8 bg-gray-50">
+          <div className="flex-1 flex items-center justify-center p-6 bg-neutral-900">
             <div className="text-center max-w-md">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-4">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-500/20 mb-4">
                 <svg
-                  className="h-8 w-8 text-blue-600"
+                  className="h-6 w-6 text-blue-400"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -323,13 +323,13 @@ export function PreviewFrame() {
                   />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <h3 className="text-lg font-semibold text-neutral-100 mb-2">
                 Welcome to UI Generator
               </h3>
-              <p className="text-sm text-gray-600 mb-3">
+              <p className="text-sm text-neutral-400 mb-3">
                 Start building React components with AI assistance
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-neutral-500">
                 Ask the AI to create your first component to see it live here
               </p>
             </div>
@@ -341,16 +341,16 @@ export function PreviewFrame() {
     return (
       <div className="h-full flex flex-col">
         {deviceToolbar}
-        <div className="flex-1 flex items-center justify-center p-8 bg-gray-50">
+        <div className="flex-1 flex items-center justify-center p-6 bg-neutral-900">
           <div className="text-center max-w-md">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
-              <AlertCircle className="h-8 w-8 text-gray-400" />
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-neutral-800 mb-4">
+              <AlertCircle className="h-6 w-6 text-neutral-500" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <h3 className="text-lg font-semibold text-neutral-100 mb-2">
               No Preview Available
             </h3>
-            <p className="text-sm text-gray-500">{error}</p>
-            <p className="text-xs text-gray-400 mt-2">
+            <p className="text-sm text-neutral-400">{error}</p>
+            <p className="text-xs text-neutral-500 mt-2">
               Start by creating a React component using the AI assistant
             </p>
           </div>
@@ -364,7 +364,7 @@ export function PreviewFrame() {
       {deviceToolbar}
       <div
         ref={containerRef}
-        className="flex-1 overflow-auto bg-neutral-100 flex items-start justify-center"
+        className="flex-1 overflow-auto bg-neutral-800 flex items-start justify-center"
       >
         {isResponsive ? (
           <iframe
@@ -376,7 +376,7 @@ export function PreviewFrame() {
           />
         ) : (
           <div
-            className="bg-white shadow-sm border border-neutral-200 my-4 mx-auto shrink-0"
+            className="bg-white border border-neutral-700 my-4 mx-auto shrink-0"
             style={{
               width: displayWidth,
               height: displayHeight,

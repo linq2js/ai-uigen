@@ -294,7 +294,8 @@ export function createPreviewHTML(
   entryPoint: string,
   importMap: string,
   styles: string = "",
-  errors: Array<{ path: string; error: string }> = []
+  errors: Array<{ path: string; error: string }> = [],
+  title: string = "Preview"
 ): string {
   // Parse the import map to get the blob URL for the entry point
   let entryPointUrl = entryPoint;
@@ -312,7 +313,7 @@ export function createPreviewHTML(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Preview</title>
+  <title>${title.replace(/</g, "&lt;")}</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body {

@@ -29,7 +29,7 @@ export function MentionPopup({
   return (
     <div className="absolute bottom-full left-0 right-0 mb-1 z-50">
       <Command
-        className="border border-neutral-200 rounded-lg shadow-lg bg-white max-h-[240px]"
+        className="border border-neutral-700 rounded-lg shadow-lg bg-neutral-800 max-h-[240px]"
         filter={(value, search) => {
           if (value.toLowerCase().includes(search.toLowerCase())) return 1;
           return 0;
