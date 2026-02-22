@@ -53,7 +53,11 @@ export function ChatInterface({ readOnly = false, onSwitchToCode }: { readOnly?:
       </div>
       {!readOnly && error && !errorDismissed && (
         <div className="absolute bottom-48 left-3 right-3 z-20 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-sm text-red-400 flex items-center justify-between gap-3">
-          <span className="min-w-0 truncate"><strong>Error:</strong> {error.message}</span>
+          <span className="min-w-0 truncate"><strong>Error:</strong> {
+            /context.*length|token.*limit|too many tokens|max.*tokens/i.test(error.message) && preferences.aiModel.includes("Thinking")
+              ? "Conversation too long for thinking mode. Switch to a non-thinking model to continue."
+              : error.message
+          }</span>
           <div className="flex items-center gap-1 shrink-0">
             <button
               onClick={retryLastMessage}

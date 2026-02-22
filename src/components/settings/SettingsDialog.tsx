@@ -18,9 +18,10 @@ import { toast } from "sonner";
 interface SettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  defaultTab?: string;
 }
 
-export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
+export function SettingsDialog({ open, onOpenChange, defaultTab = "api-key" }: SettingsDialogProps) {
   const {
     apiKey,
     setApiKey,
@@ -92,7 +93,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="api-key" className="mt-2">
+        <Tabs defaultValue={defaultTab} className="mt-2">
           <TabsList className="w-full">
             <TabsTrigger value="api-key">API Key</TabsTrigger>
             <TabsTrigger value="rules">Global Rules</TabsTrigger>

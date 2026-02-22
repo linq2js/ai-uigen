@@ -16,6 +16,7 @@ import {
   type GenerationPreferences,
   MAX_STEPS_MIN,
   MAX_STEPS_MAX,
+  STEPS_PER_REQUEST,
 } from "@/lib/types/preferences";
 import { toDescriptor, type Skill } from "@/lib/types/skill";
 import { getSystemSkills } from "@/lib/skills/system";
@@ -151,7 +152,14 @@ export async function POST(req: Request) {
     },
   });
 
-  const truncatedMessages = truncateMessages(strippedMessages);
+  const thinkingEnabled = preferences?.aiModel?.includes("Thinking") ?? false;
+
+  // When thinking is enabled the model reserves budgetTokens from the context
+  // window for its internal reasoning, so we must leave more room in the input.
+  const truncatedMessages = truncateMessages(
+    strippedMessages,
+    thinkingEnabled ? 80_000 : undefined
+  );
 
   // Reconstruct the VirtualFileSystem from serialized data
   const fileSystem = new VirtualFileSystem();
@@ -171,13 +179,13 @@ export async function POST(req: Request) {
   );
   logMessages("MESSAGES SENT TO ANTHROPIC", truncatedMessages);
 
-  const thinkingEnabled = preferences?.aiModel?.includes("Thinking") ?? false;
-
   const result = streamText({
     model,
     messages: truncatedMessages,
     maxTokens: thinkingEnabled ? 128_000 : 10_000,
-    maxSteps: isMockProvider ? Math.min(4, requestedSteps) : requestedSteps,
+    maxSteps: isMockProvider
+      ? Math.min(4, requestedSteps)
+      : Math.min(requestedSteps, STEPS_PER_REQUEST),
     onError: (err: any) => {
       console.error(err);
     },
@@ -245,4 +253,4 @@ export async function POST(req: Request) {
   return result.toDataStreamResponse();
 }
 
-export const maxDuration = 120;
+export const maxDuration = 300;

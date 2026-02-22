@@ -20,7 +20,10 @@ import { useGlobalRules } from "@/hooks/use-global-rules";
 import { useProjectRules } from "@/hooks/use-project-rules";
 import { useGlobalSkills } from "@/hooks/use-global-skills";
 import { useProjectSkills } from "@/hooks/use-project-skills";
-import type { GenerationPreferences } from "@/lib/types/preferences";
+import {
+  type GenerationPreferences,
+  MAX_AUTO_CONTINUATIONS,
+} from "@/lib/types/preferences";
 import type { Skill } from "@/lib/types/skill";
 import type { QueuedMessage } from "@/lib/types/queue";
 import { markGenerating, markIdle } from "@/lib/generation-tracker";
@@ -111,6 +114,9 @@ export function ChatProvider({
     [globalSkills, projectSkills],
   );
 
+  const [continuationNeeded, setContinuationNeeded] = useState(false);
+  const continuationCountRef = useRef(0);
+
   const {
     messages,
     input,
@@ -138,12 +144,24 @@ export function ChatProvider({
     onToolCall: ({ toolCall }) => {
       handleToolCall(toolCall);
     },
+    onFinish: (_message, { finishReason }) => {
+      if (
+        finishReason === "tool-calls" &&
+        continuationCountRef.current < MAX_AUTO_CONTINUATIONS
+      ) {
+        setContinuationNeeded(true);
+      } else {
+        continuationCountRef.current = 0;
+        setContinuationNeeded(false);
+      }
+    },
   });
 
   const [queue, setQueue] = useState<QueuedMessage[]>([]);
   const processingRef = useRef(false);
 
-  const isGenerating = status === "submitted" || status === "streaming";
+  const isGenerating =
+    status === "submitted" || status === "streaming" || continuationNeeded;
 
   useEffect(() => {
     if (!projectId) return;
@@ -200,6 +218,8 @@ export function ChatProvider({
   );
 
   const stopGeneration = useCallback(() => {
+    setContinuationNeeded(false);
+    continuationCountRef.current = 0;
     stop();
   }, [stop]);
 
@@ -208,12 +228,15 @@ export function ChatProvider({
   }, []);
 
   const stopAll = useCallback(() => {
+    setContinuationNeeded(false);
+    continuationCountRef.current = 0;
     stop();
     setQueue([]);
   }, [stop]);
 
   const handleSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>, options?: ChatRequestOptions) => {
+      continuationCountRef.current = 0;
       if (!isGenerating && queue.length === 0) {
         sdkHandleSubmit(e, options);
       } else {
@@ -231,10 +254,23 @@ export function ChatProvider({
     [isGenerating, queue.length, sdkHandleSubmit, enqueueMessage, input, setInput]
   );
 
-  // Auto-dequeue: when SDK becomes ready/error and queue has items
+  // Auto-continue / auto-dequeue: when SDK becomes ready, either send a
+  // continuation message (takes priority) or dequeue the next user message.
   useEffect(() => {
     if (processingRef.current) return;
     if (status !== "ready") return;
+
+    if (continuationNeeded) {
+      processingRef.current = true;
+      setContinuationNeeded(false);
+      continuationCountRef.current++;
+      append({ role: "user", content: "Continue." });
+      setTimeout(() => {
+        processingRef.current = false;
+      }, 0);
+      return;
+    }
+
     if (queue.length === 0) return;
 
     processingRef.current = true;
@@ -246,11 +282,10 @@ export function ChatProvider({
       next.attachments ? { experimental_attachments: next.attachments } : undefined
     );
 
-    // Reset guard after a tick so the next status change can trigger again
     setTimeout(() => {
       processingRef.current = false;
     }, 0);
-  }, [status, queue, append]);
+  }, [status, queue, continuationNeeded, append]);
 
   // Track anonymous work
   useEffect(() => {

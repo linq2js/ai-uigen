@@ -65,6 +65,12 @@ export const DEFAULT_PREFERENCES: GenerationPreferences = {
 export const MAX_STEPS_MIN = 4;
 export const MAX_STEPS_MAX = 120;
 
+/** Max tool-call steps per single request (keeps each request within Vercel's 300s limit) */
+export const STEPS_PER_REQUEST = 25;
+
+/** Max automatic "Continue." messages the client will send when a response is truncated */
+export const MAX_AUTO_CONTINUATIONS = 5;
+
 export interface PreferenceCategory {
   key: keyof Omit<GenerationPreferences, "accessibility" | "maxSteps">;
   label: string;

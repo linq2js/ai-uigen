@@ -17,6 +17,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HeaderActions } from "@/components/HeaderActions";
 import { ProjectSidebar } from "@/components/sidebar/ProjectSidebar";
 import { PanelLeft, Loader2, MessageSquare, Zap, HardDrive } from "lucide-react";
+import { JumpToFile } from "@/components/editor/JumpToFile";
 
 const SIDEBAR_KEY = "artifex-sidebar-open";
 
@@ -58,6 +59,7 @@ export function MainContent({ user, project, readOnly = false }: MainContentProp
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [projectName, setProjectName] = useState(project?.name ?? "");
   const [navigating, setNavigating] = useState(false);
+  const [jumpToFileOpen, setJumpToFileOpen] = useState(false);
   const sidebarPanelRef = useRef<ImperativePanelHandle>(null);
 
   useEffect(() => {
@@ -272,6 +274,12 @@ export function MainContent({ user, project, readOnly = false }: MainContentProp
               </ResizablePanel>
             </ResizablePanelGroup>
           </div>
+
+          <JumpToFile
+            open={jumpToFileOpen}
+            onOpenChange={setJumpToFileOpen}
+            onFileSelected={() => setActiveView("code")}
+          />
 
           {/* Full-page loading overlay during navigation */}
           {navigating && (

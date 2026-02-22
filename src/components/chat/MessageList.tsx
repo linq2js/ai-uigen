@@ -308,6 +308,12 @@ function ThinkingBlock({ reasoning }: { reasoning: string }) {
   );
 }
 
+const CONTINUATION_TEXT = "Continue.";
+
+function isContinuationMessage(message: Message): boolean {
+  return message.role === "user" && message.content === CONTINUATION_TEXT;
+}
+
 const MessageRow = React.memo(function MessageRow({
   message,
   isLoading,
@@ -325,6 +331,17 @@ const MessageRow = React.memo(function MessageRow({
     const text = getMessageText(message);
     navigator.clipboard.writeText(text);
   }, [message]);
+
+  if (isContinuationMessage(message)) {
+    return (
+      <div className="flex items-center justify-center gap-2 py-1 text-[11px] text-neutral-500">
+        <div className="h-px flex-1 bg-neutral-800" />
+        <span>auto-continuing&hellip;</span>
+        <div className="h-px flex-1 bg-neutral-800" />
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(

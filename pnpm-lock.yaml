@@ -11,6 +11,9 @@ importers:
       '@ai-sdk/anthropic':
         specifier: 1.2.12
         version: 1.2.12(zod@3.25.76)
+      '@ai-sdk/react':
+        specifier: ^1.2.12
+        version: 1.2.12(react@19.2.4)(zod@3.25.76)
       '@babel/standalone':
         specifier: ^7.27.6
         version: 7.29.1
@@ -107,6 +110,9 @@ importers:
       tailwind-merge:
         specifier: ^3.3.1
         version: 3.4.1
+      zod:
+        specifier: ^3.23.8
+        version: 3.25.76
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4

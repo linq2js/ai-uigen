@@ -21,6 +21,7 @@ import { SettingsButton } from "@/components/settings/SettingsButton";
 import { signOut } from "@/actions";
 import { getProjects } from "@/actions/get-projects";
 import { togglePublish } from "@/actions/toggle-publish";
+import { useChat } from "@/lib/contexts/chat-context";
 import { useFileSystem } from "@/lib/contexts/file-system-context";
 import { exportAsZip, exportCompiledHtml } from "@/lib/export-zip";
 import {
@@ -40,6 +41,7 @@ interface HeaderActionsProps {
 
 export function HeaderActions({ user, projectId, published: initialPublished }: HeaderActionsProps) {
   const { fileSystem, getAllFiles } = useFileSystem();
+  const { apiKey } = useChat();
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [exporting, setExporting] = useState(false);
@@ -52,6 +54,21 @@ export function HeaderActions({ user, projectId, published: initialPublished }: 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [currentProjectName, setCurrentProjectName] = useState<string | null>(null);
+
+  // Auto-open settings when no API key is configured (server or client)
+  useEffect(() => {
+    let cancelled = false;
+    if (apiKey) return;
+    fetch("/api/config")
+      .then((r) => r.json())
+      .then((data: { hasServerKey: boolean }) => {
+        if (!cancelled && !data.hasServerKey) {
+          setSettingsOpen(true);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [apiKey]);
 
   // Load current project name for export safeName
   useEffect(() => {
