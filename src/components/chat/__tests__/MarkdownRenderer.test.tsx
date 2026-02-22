@@ -42,12 +42,12 @@ test("renders inline code with custom styling", () => {
   const codeElement = screen.getByText("inline code");
   expect(codeElement.tagName).toBe("CODE");
   expect(codeElement.className).toContain("not-prose");
-  expect(codeElement.className).toContain("text-sm");
+  expect(codeElement.className).toContain("text-[11px]");
   expect(codeElement.className).toContain("px-1");
   expect(codeElement.className).toContain("py-0.5");
   expect(codeElement.className).toContain("rounded-sm");
-  expect(codeElement.className).toContain("bg-neutral-100");
-  expect(codeElement.className).toContain("text-neutral-900");
+  expect(codeElement.className).toContain("bg-neutral-800");
+  expect(codeElement.className).toContain("text-neutral-200");
   expect(codeElement.className).toContain("font-mono");
 });
 

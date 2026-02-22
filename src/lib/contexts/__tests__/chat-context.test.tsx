@@ -18,6 +18,44 @@ vi.mock("@/lib/anon-work-tracker", () => ({
   setHasAnonWork: vi.fn(),
 }));
 
+vi.mock("@/hooks/use-preferences", () => ({
+  usePreferences: () => ({
+    preferences: { aiModel: "Haiku 4.5", accessibility: false, cssFramework: "Tailwind CSS", architectureStyle: "Auto", codeQuality: "Auto", designStyle: "Auto", stateManagement: "Auto", maxSteps: 40 },
+    setPreference: vi.fn(),
+    resetPreferences: vi.fn(),
+    isDefault: () => true,
+  }),
+}));
+
+vi.mock("@/hooks/use-api-key", () => ({
+  useApiKey: () => ({ apiKey: "", setApiKey: vi.fn(), clearApiKey: vi.fn() }),
+}));
+
+vi.mock("@/hooks/use-global-rules", () => ({
+  useGlobalRules: () => ({ globalRules: "", setGlobalRules: vi.fn() }),
+}));
+
+vi.mock("@/hooks/use-project-rules", () => ({
+  useProjectRules: () => ({ projectRules: "", setProjectRules: vi.fn() }),
+}));
+
+vi.mock("@/hooks/use-global-skills", () => ({
+  useGlobalSkills: () => ({ skills: [], addSkill: vi.fn(), updateSkill: vi.fn(), deleteSkill: vi.fn(), toggleSkill: vi.fn() }),
+}));
+
+vi.mock("@/hooks/use-project-skills", () => ({
+  useProjectSkills: () => ({ skills: [], addSkill: vi.fn(), updateSkill: vi.fn(), deleteSkill: vi.fn(), toggleSkill: vi.fn() }),
+}));
+
+vi.mock("@/hooks/use-auto-save", () => ({
+  useAutoSave: vi.fn(),
+}));
+
+vi.mock("@/lib/generation-tracker", () => ({
+  markGenerating: vi.fn(),
+  markIdle: vi.fn(),
+}));
+
 // Helper component to access chat context
 function TestComponent() {
   const chat = useChat();
@@ -96,15 +134,19 @@ describe("ChatContext", () => {
       </ChatProvider>
     );
 
-    expect(useAIChat).toHaveBeenCalledWith({
-      api: "/api/chat",
-      initialMessages,
-      body: {
-        files: mockFileSystem.serialize(),
-        projectId: "test-project",
-      },
-      onToolCall: expect.any(Function),
-    });
+    expect(useAIChat).toHaveBeenCalledWith(
+      expect.objectContaining({
+        api: "/api/chat",
+        initialMessages,
+        keepLastMessageOnError: true,
+        body: expect.objectContaining({
+          files: mockFileSystem.serialize(),
+          projectId: "test-project",
+        }),
+        onToolCall: expect.any(Function),
+        onFinish: expect.any(Function),
+      })
+    );
 
     expect(screen.getByTestId("messages").textContent).toBe("2");
   });

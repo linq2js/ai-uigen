@@ -1,11 +1,28 @@
 import { test, expect, vi, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { MessageList } from "../MessageList";
 import type { Message } from "ai";
 
 // Mock the MarkdownRenderer component
 vi.mock("../MarkdownRenderer", () => ({
   MarkdownRenderer: ({ content }: { content: string }) => <div>{content}</div>,
+}));
+
+vi.mock("@/lib/contexts/file-system-context", () => ({
+  useFileSystem: () => ({
+    setSelectedFile: vi.fn(),
+  }),
+}));
+
+vi.mock("react-virtuoso", () => ({
+  Virtuoso: ({ data, itemContent, components }: any) => (
+    <div>
+      {data?.map((item: any, index: number) => (
+        <div key={index}>{itemContent(index, item)}</div>
+      ))}
+      {components?.Footer && <components.Footer />}
+    </div>
+  ),
 }));
 
 afterEach(() => {
@@ -131,7 +148,7 @@ test("MessageList doesn't show loading state for non-last messages", () => {
   expect(screen.queryByText("Generating...")).toBeNull();
 });
 
-test("MessageList renders reasoning parts", () => {
+test("MessageList renders reasoning parts", async () => {
   const messages: Message[] = [
     {
       id: "1",
@@ -150,7 +167,12 @@ test("MessageList renders reasoning parts", () => {
 
   render(<MessageList messages={messages} />);
 
-  expect(screen.getByText("Reasoning")).toBeDefined();
+  const thinkingButton = screen.getByText("Thinking");
+  expect(thinkingButton).toBeDefined();
+
+  // Expand the thinking block to reveal reasoning
+  fireEvent.click(thinkingButton.closest("button")!);
+
   expect(
     screen.getByText("The user wants a button component with specific styling.")
   ).toBeDefined();
@@ -247,9 +269,9 @@ test("MessageList applies correct styling for user vs assistant messages", () =>
   expect(userMessage?.className).toContain("bg-blue-600");
   expect(userMessage?.className).toContain("text-white");
 
-  // Assistant messages should have white background
-  expect(assistantMessage?.className).toContain("bg-white");
-  expect(assistantMessage?.className).toContain("text-neutral-900");
+  // Assistant messages should have dark background
+  expect(assistantMessage?.className).toContain("bg-neutral-800");
+  expect(assistantMessage?.className).toContain("text-neutral-100");
 });
 
 test("MessageList handles empty content with parts", () => {
@@ -282,9 +304,9 @@ test("MessageList shows loading for assistant message with empty parts", () => {
   );
 
   // Check that exactly one "Generating..." text appears
-  const loadingText = container.querySelectorAll(".text-neutral-500");
+  const loadingText = container.querySelectorAll(".text-neutral-400");
   const generatingElements = Array.from(loadingText).filter(
-    (el) => el.textContent === "Generating..."
+    (el) => el.textContent?.includes("Generating...")
   );
   expect(generatingElements).toHaveLength(1);
 });

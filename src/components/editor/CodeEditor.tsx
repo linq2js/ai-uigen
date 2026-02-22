@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import Editor, { type Monaco } from "@monaco-editor/react";
-import type { editor, Position } from "monaco-editor";
+import type { editor, Position, IRange, IPosition, Uri } from "monaco-editor";
 import { useFileSystem } from "@/lib/contexts/file-system-context";
 import { Code2 } from "lucide-react";
 import {
@@ -206,7 +206,7 @@ export function CodeEditor({ readOnly = false }: { readOnly?: boolean }) {
 
     // Intercept when Monaco tries to open a different model (cross-file go-to-def)
     const editorOpener = monaco.editor.registerEditorOpener({
-      openCodeEditor(_source, resource, selectionOrPosition) {
+      openCodeEditor(_source: editor.ICodeEditor, resource: Uri, selectionOrPosition?: IRange | IPosition) {
         const targetPath = resource.path;
         if (!targetPath) return false;
 

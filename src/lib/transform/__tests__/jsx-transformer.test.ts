@@ -51,8 +51,8 @@ test("transformJSX collects imports from code", () => {
   const result = transformJSX(code, "test.jsx", new Set());
 
   expect(result.missingImports).toContain("react");
-  expect(result.missingImports).toContain("./Component");
-  expect(result.missingImports).toContain("../utils");
+  expect(result.missingImports).toContain("Component");
+  expect(result.missingImports).toContain("utils");
   expect(result.missingImports?.size).toBe(3);
 });
 
@@ -149,9 +149,9 @@ test("createImportMap creates placeholder modules for missing imports", () => {
   const result = createImportMap(files);
   const parsed = JSON.parse(result.importMap);
 
-  // Should create placeholder for missing Button component
-  expect(parsed.imports["./components/Button"]).toBeDefined();
-  expect(parsed.imports["./components/Button"]).toMatch(/^blob:mock-url-/);
+  // Resolved bare specifier that doesn't match an existing file is treated as npm package
+  expect(parsed.imports["components/Button"]).toBeDefined();
+  expect(parsed.imports["components/Button"]).toBe("https://esm.sh/components/Button");
 });
 
 test("createImportMap handles @/ alias imports", () => {
@@ -239,7 +239,7 @@ test("integration: full transformation pipeline works", () => {
   expect(parsed.imports["/Button.jsx"]).toMatch(/^blob:mock-url-/);
 
   // Import variations should exist
-  expect(parsed.imports["./Button"]).toBeDefined();
+  expect(parsed.imports["Button"]).toBeDefined();
   expect(parsed.imports["/Button"]).toBeDefined();
 
   // Create preview HTML
@@ -485,8 +485,8 @@ test("files with syntax errors are not included in import map", () => {
   expect(parsed.imports["/BadComponent.jsx"]).toBeUndefined();
   expect(parsed.imports["/BadComponent"]).toBeUndefined();
   
-  // But a placeholder should be created for the import
-  expect(parsed.imports["./BadComponent"]).toBeDefined();
+  // But a placeholder should be created for the import (resolved as bare specifier)
+  expect(parsed.imports["BadComponent"]).toBeDefined();
   
   // Should have error tracked
   expect(result.errors.some(e => e.path === "/BadComponent.jsx")).toBe(true);
