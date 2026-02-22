@@ -33,7 +33,12 @@ export type CodeQualityLanguage =
   | "TypeScript"
   | "TypeScript Strict";
 
-export type AIModel = "Haiku 4.5" | "Sonnet 4.6" | "Opus 4.6";
+export type AIModel =
+  | "Haiku 4.5"
+  | "Sonnet 4.6"
+  | "Sonnet 4.6 Thinking"
+  | "Opus 4.6"
+  | "Opus 4.6 Thinking";
 
 export interface GenerationPreferences {
   cssFramework: CSSFramework;
@@ -107,4 +112,10 @@ export const PREFERENCE_CATEGORIES: PreferenceCategory[] = [
   },
 ];
 
-export const AI_MODEL_OPTIONS: AIModel[] = ["Haiku 4.5", "Sonnet 4.6", "Opus 4.6"];
+export const AI_MODEL_OPTIONS: AIModel[] = [
+  "Haiku 4.5",
+  "Sonnet 4.6",
+  "Sonnet 4.6 Thinking",
+  "Opus 4.6",
+  "Opus 4.6 Thinking",
+];

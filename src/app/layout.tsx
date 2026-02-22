@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Toaster } from "sonner";
 import { MobileGuard } from "@/components/MobileGuard";
 import "./globals.css";
 
@@ -30,6 +31,7 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <MobileGuard>{children}</MobileGuard>
+        <Toaster theme="dark" position="bottom-right" />
       </body>
     </html>
   );

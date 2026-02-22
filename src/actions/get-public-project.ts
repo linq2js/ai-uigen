@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { safeJsonParse } from "@/lib/safe-json";
 
 export async function getPublicProject(projectId: string) {
   const project = await prisma.project.findUnique({
@@ -14,8 +15,8 @@ export async function getPublicProject(projectId: string) {
   return {
     id: project.id,
     name: project.name,
-    messages: JSON.parse(project.messages),
-    data: JSON.parse(project.data),
+    messages: safeJsonParse(project.messages, []),
+    data: safeJsonParse(project.data, {}),
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
   };

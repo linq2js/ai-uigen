@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   PanelLeftClose,
   Search,
@@ -119,8 +120,8 @@ export function ProjectSidebar({
     try {
       const p = await getProjects();
       setProjects(p);
-    } catch (err) {
-      console.error("Failed to load projects:", err);
+    } catch {
+      toast.error("Failed to load projects");
     } finally {
       setLoading(false);
     }
@@ -190,8 +191,8 @@ export function ProjectSidebar({
         document.title = newName;
         onProjectRenamed?.(newName);
       }
-    } catch (err) {
-      console.error("Failed to rename:", err);
+    } catch {
+      toast.error("Failed to rename project");
     } finally {
       setIsRenaming(false);
     }
@@ -219,8 +220,8 @@ export function ProjectSidebar({
           router.push(`/${newProject.id}`);
         }
       }
-    } catch (err) {
-      console.error("Failed to delete:", err);
+    } catch {
+      toast.error("Failed to delete project");
     } finally {
       setIsDeleting(false);
       setDeleteTarget(null);
@@ -245,8 +246,8 @@ export function ProjectSidebar({
       await loadProjects();
       onNavigating?.(true);
       router.push(`/${newProject.id}`);
-    } catch (err) {
-      console.error("Failed to clone:", err);
+    } catch {
+      toast.error("Failed to clone project");
     } finally {
       setIsCloning(false);
       setCloneTarget(null);

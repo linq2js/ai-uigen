@@ -73,11 +73,17 @@ export function useAttachments() {
 
       // Kick off reads and update each attachment's dataUrl
       newAttachments.forEach((att) => {
-        readFileAsDataUrl(att.file).then((dataUrl) => {
-          setAttachments((current) =>
-            current.map((a) => (a.id === att.id ? { ...a, dataUrl } : a))
-          );
-        });
+        readFileAsDataUrl(att.file)
+          .then((dataUrl) => {
+            setAttachments((current) =>
+              current.map((a) => (a.id === att.id ? { ...a, dataUrl } : a))
+            );
+          })
+          .catch(() => {
+            setAttachments((current) =>
+              current.filter((a) => a.id !== att.id)
+            );
+          });
       });
 
       return [...prev, ...newAttachments];

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   LogOut,
@@ -79,7 +80,12 @@ export function HeaderActions({ user, projectId, published: initialPublished }: 
 
   const handleSignOut = async () => {
     setSigningOut(true);
-    await signOut();
+    try {
+      await signOut();
+    } catch {
+      toast.error("Failed to sign out");
+      setSigningOut(false);
+    }
   };
 
   const safeName = () => {
@@ -114,8 +120,8 @@ export function HeaderActions({ user, projectId, published: initialPublished }: 
       const newState = await togglePublish(projectId);
       setIsPublished(newState);
       if (!newState) setPublishOpen(false);
-    } catch (err) {
-      console.error("Failed to toggle publish:", err);
+    } catch {
+      toast.error("Failed to update publish status");
     } finally {
       setPublishing(false);
     }
@@ -126,10 +132,14 @@ export function HeaderActions({ user, projectId, published: initialPublished }: 
   const studioUrl = `${origin}/p/${projectId}`;
 
   const handleCopy = async (url: string, type: "standalone" | "studio") => {
-    await navigator.clipboard.writeText(url);
-    const setter = type === "standalone" ? setCopiedStandalone : setCopiedStudio;
-    setter(true);
-    setTimeout(() => setter(false), 2000);
+    try {
+      await navigator.clipboard.writeText(url);
+      const setter = type === "standalone" ? setCopiedStandalone : setCopiedStudio;
+      setter(true);
+      setTimeout(() => setter(false), 2000);
+    } catch {
+      toast.error("Failed to copy to clipboard");
+    }
   };
 
   const hasFiles = getAllFiles().size > 0;

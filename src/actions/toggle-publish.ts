@@ -10,20 +10,25 @@ export async function togglePublish(projectId: string) {
     throw new Error("Unauthorized");
   }
 
-  const project = await prisma.project.findUnique({
-    where: { id: projectId, userId: session.userId },
-    select: { published: true },
-  });
+  try {
+    const project = await prisma.project.findUnique({
+      where: { id: projectId, userId: session.userId },
+      select: { published: true },
+    });
 
-  if (!project) {
-    throw new Error("Project not found");
+    if (!project) {
+      throw new Error("Project not found");
+    }
+
+    const updated = await prisma.project.update({
+      where: { id: projectId, userId: session.userId },
+      data: { published: !project.published },
+      select: { published: true },
+    });
+
+    return updated.published;
+  } catch (error) {
+    console.error("Failed to toggle publish:", error);
+    throw new Error("Failed to toggle publish status");
   }
-
-  const updated = await prisma.project.update({
-    where: { id: projectId, userId: session.userId },
-    data: { published: !project.published },
-    select: { published: true },
-  });
-
-  return updated.published;
 }

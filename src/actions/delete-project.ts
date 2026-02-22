@@ -10,9 +10,14 @@ export async function deleteProject(projectId: string) {
     throw new Error("Unauthorized");
   }
 
-  await prisma.project.delete({
-    where: { id: projectId, userId: session.userId },
-  });
+  try {
+    await prisma.project.delete({
+      where: { id: projectId, userId: session.userId },
+    });
 
-  return { success: true };
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to delete project:", error);
+    throw new Error("Failed to delete project");
+  }
 }

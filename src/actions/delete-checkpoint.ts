@@ -10,12 +10,17 @@ export async function deleteCheckpoint(checkpointId: string) {
     throw new Error("Unauthorized");
   }
 
-  await prisma.checkpoint.delete({
-    where: {
-      id: checkpointId,
-      project: { userId: session.userId },
-    },
-  });
+  try {
+    await prisma.checkpoint.delete({
+      where: {
+        id: checkpointId,
+        project: { userId: session.userId },
+      },
+    });
 
-  return { success: true };
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to delete checkpoint:", error);
+    throw new Error("Failed to delete checkpoint");
+  }
 }

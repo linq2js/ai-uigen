@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { RotateCcw, X } from "lucide-react";
 import { MessageList } from "./MessageList";
 import { MessageInput } from "./MessageInput";
@@ -119,8 +120,8 @@ export function ChatInterface({ readOnly = false, onSwitchToCode }: { readOnly?:
             });
             setCloneFromIndex(null);
             router.push(`/${newProject.id}`);
-          } catch (err) {
-            console.error("Failed to clone:", err);
+          } catch {
+            toast.error("Failed to clone project");
           } finally {
             setIsCloning(false);
           }

@@ -79,6 +79,26 @@ function sanitizeToolResults(messages: any[]): any[] {
 }
 
 export async function POST(req: Request) {
+  let body: {
+    messages: any[];
+    files: Record<string, FileNode>;
+    projectId?: string;
+    preferences?: Partial<GenerationPreferences>;
+    apiKey?: string;
+    globalRules?: string;
+    projectRules?: string;
+    skills?: Skill[];
+  };
+
+  try {
+    body = await req.json();
+  } catch {
+    return new Response(JSON.stringify({ error: "Invalid JSON payload" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   const {
     messages,
     files,
@@ -88,16 +108,18 @@ export async function POST(req: Request) {
     globalRules,
     projectRules,
     skills,
-  }: {
-    messages: any[];
-    files: Record<string, FileNode>;
-    projectId?: string;
-    preferences?: Partial<GenerationPreferences>;
-    apiKey?: string;
-    globalRules?: string;
-    projectRules?: string;
-    skills?: Skill[];
-  } = await req.json();
+  } = body;
+
+  // Require authentication when operating on a saved project
+  if (projectId) {
+    const session = await getSession();
+    if (!session) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  }
 
   const enabledUserSkills = (skills || []).filter((s) => s.enabled);
   const systemSkills = getSystemSkills(preferences || {});
@@ -149,14 +171,19 @@ export async function POST(req: Request) {
   );
   logMessages("MESSAGES SENT TO ANTHROPIC", truncatedMessages);
 
+  const thinkingEnabled = preferences?.aiModel?.includes("Thinking") ?? false;
+
   const result = streamText({
     model,
     messages: truncatedMessages,
-    maxTokens: 10_000,
+    maxTokens: thinkingEnabled ? 128_000 : 10_000,
     maxSteps: isMockProvider ? Math.min(4, requestedSteps) : requestedSteps,
     onError: (err: any) => {
       console.error(err);
     },
+    providerOptions: thinkingEnabled
+      ? { anthropic: { thinking: { type: "enabled", budgetTokens: 10000 } } }
+      : undefined,
     tools: {
       str_replace_editor: buildStrReplaceTool(fileSystem),
       file_manager: buildFileManagerTool(fileSystem),

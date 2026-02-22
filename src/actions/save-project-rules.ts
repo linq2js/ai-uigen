@@ -7,8 +7,13 @@ export async function saveProjectRules(projectId: string, rules: string) {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
 
-  await prisma.project.update({
-    where: { id: projectId, userId: session.userId },
-    data: { rules },
-  });
+  try {
+    await prisma.project.update({
+      where: { id: projectId, userId: session.userId },
+      data: { rules },
+    });
+  } catch (error) {
+    console.error("Failed to save project rules:", error);
+    throw new Error("Failed to save project rules");
+  }
 }

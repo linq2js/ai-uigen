@@ -11,19 +11,24 @@ interface CreateProjectInput {
 
 export async function createProject(input: CreateProjectInput) {
   const session = await getSession();
-  
+
   if (!session) {
     throw new Error("Unauthorized");
   }
 
-  const project = await prisma.project.create({
-    data: {
-      name: input.name,
-      userId: session.userId,
-      messages: JSON.stringify(input.messages),
-      data: JSON.stringify(input.data),
-    },
-  });
+  try {
+    const project = await prisma.project.create({
+      data: {
+        name: input.name,
+        userId: session.userId,
+        messages: JSON.stringify(input.messages),
+        data: JSON.stringify(input.data),
+      },
+    });
 
-  return project;
+    return project;
+  } catch (error) {
+    console.error("Failed to create project:", error);
+    throw new Error("Failed to create project");
+  }
 }

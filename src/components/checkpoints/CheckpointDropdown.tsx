@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -48,8 +49,12 @@ export function CheckpointDropdown({ projectId }: { projectId: string }) {
   const [restoring, setRestoring] = useState(false);
 
   const load = async () => {
-    const data = await getCheckpoints(projectId);
-    setCheckpoints(data);
+    try {
+      const data = await getCheckpoints(projectId);
+      setCheckpoints(data);
+    } catch {
+      toast.error("Failed to load checkpoints");
+    }
   };
 
   useEffect(() => {
@@ -71,14 +76,20 @@ export function CheckpointDropdown({ projectId }: { projectId: string }) {
       await createCheckpoint(projectId, name.trim());
       setName(new Date().toLocaleString());
       await load();
+    } catch {
+      toast.error("Failed to save checkpoint");
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    await deleteCheckpoint(id);
-    setCheckpoints((prev) => prev.filter((c) => c.id !== id));
+    try {
+      await deleteCheckpoint(id);
+      setCheckpoints((prev) => prev.filter((c) => c.id !== id));
+    } catch {
+      toast.error("Failed to delete checkpoint");
+    }
   };
 
   const handleRestore = async () => {
@@ -90,6 +101,7 @@ export function CheckpointDropdown({ projectId }: { projectId: string }) {
       setOpen(false);
       window.location.reload();
     } catch {
+      toast.error("Failed to restore checkpoint");
       setRestoring(false);
     }
   };

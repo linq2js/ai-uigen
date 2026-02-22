@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { Message } from "ai";
 import { Virtuoso } from "react-virtuoso";
 import { cn } from "@/lib/utils";
 import {
   Bot,
+  Brain,
   Clock,
   Loader2,
   FileCode,
@@ -20,6 +21,8 @@ import {
   GitBranch,
   Copy,
   MoreHorizontal,
+  ChevronRight,
+  ChevronDown,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -27,6 +30,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+import { diffLines } from "diff";
 import type { QueuedMessage } from "@/lib/types/queue";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { AttachmentPreview } from "./AttachmentPreview";
@@ -128,6 +132,182 @@ function getMessageText(message: Message): string {
   return message.content || "";
 }
 
+function useLazyDiff(
+  oldStr: string | undefined,
+  newStr: string | undefined,
+  enabled: boolean
+) {
+  return useMemo(() => {
+    if (!enabled) return null;
+    return diffLines(oldStr ?? "", newStr ?? "");
+  }, [oldStr, newStr, enabled]);
+}
+
+function CollapsedContext({
+  lines,
+  chunkKey,
+}: {
+  lines: string[];
+  chunkKey: string;
+}) {
+  const [show, setShow] = useState(false);
+  if (lines.length === 0) return null;
+
+  if (show) {
+    return (
+      <>
+        {lines.map((line, li) => (
+          <div
+            key={`${chunkKey}-${li}`}
+            className="px-2 py-px text-neutral-500 whitespace-pre-wrap break-all"
+          >
+            <span className="select-none inline-block w-4">&nbsp;</span>
+            {line}
+          </div>
+        ))}
+      </>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => setShow(true)}
+      className="w-full px-2 py-0.5 text-[10px] text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800 transition-colors text-center cursor-pointer border-y border-neutral-700/40"
+    >
+      {lines.length} unchanged {lines.length === 1 ? "line" : "lines"}
+    </button>
+  );
+}
+
+function DiffView({
+  oldStr,
+  newStr,
+}: {
+  oldStr?: string;
+  newStr?: string;
+}) {
+  const changes = useLazyDiff(oldStr, newStr, true);
+  if (!changes) return null;
+
+  return (
+    <div className="mt-1.5 rounded-md border border-neutral-700 bg-neutral-900 text-[11px] font-mono overflow-x-auto">
+      {changes.map((change, i) => {
+        const lines = change.value.replace(/\n$/, "").split("\n");
+        if (change.added) {
+          return lines.map((line, li) => (
+            <div
+              key={`${i}-${li}`}
+              className="px-2 py-px bg-emerald-950/40 text-emerald-300/90 whitespace-pre-wrap break-all"
+            >
+              <span className="select-none text-emerald-500/60 inline-block w-4">+</span>
+              {line}
+            </div>
+          ));
+        }
+        if (change.removed) {
+          return lines.map((line, li) => (
+            <div
+              key={`${i}-${li}`}
+              className="px-2 py-px bg-red-950/40 text-red-300/90 whitespace-pre-wrap break-all"
+            >
+              <span className="select-none text-red-500/60 inline-block w-4">−</span>
+              {line}
+            </div>
+          ));
+        }
+        return (
+          <CollapsedContext key={`ctx-${i}`} lines={lines} chunkKey={`${i}`} />
+        );
+      })}
+    </div>
+  );
+}
+
+function ToolCallRow({
+  display,
+  ToolIcon,
+  isEdit,
+  oldStr,
+  newStr,
+  onFileClick,
+}: {
+  display: ReturnType<typeof getToolDisplay>;
+  ToolIcon: React.ElementType;
+  isEdit: boolean;
+  oldStr?: string;
+  newStr?: string;
+  onFileClick: (path: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="mt-1">
+      <div className="flex items-center gap-1.5 text-xs text-neutral-500">
+        <ToolIcon className="w-3 h-3 flex-shrink-0" />
+        <span>{display.label}</span>
+        {display.detail && display.path ? (
+          <button
+            onClick={() => onFileClick(display.path!)}
+            className="text-blue-400/70 font-mono hover:text-blue-300 hover:underline cursor-pointer transition-colors"
+          >
+            {display.detail}
+          </button>
+        ) : display.detail ? (
+          <span className="font-mono">{display.detail}</span>
+        ) : null}
+        {isEdit && (
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="ml-auto flex items-center gap-0.5 text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
+          >
+            <ChevronRight
+              className={cn(
+                "w-3 h-3 transition-transform duration-150",
+                expanded && "rotate-90"
+              )}
+            />
+            <span className="text-[10px]">Changes</span>
+          </button>
+        )}
+      </div>
+      {isEdit && expanded && (
+        <DiffView oldStr={oldStr} newStr={newStr} />
+      )}
+    </div>
+  );
+}
+
+function ThinkingBlock({ reasoning }: { reasoning: string }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="mt-3">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium text-purple-400/80 hover:bg-purple-500/10 transition-colors cursor-pointer"
+      >
+        <Brain className="w-3.5 h-3.5" />
+        <span>Thinking</span>
+        <ChevronDown
+          className={cn(
+            "w-3 h-3 transition-transform duration-150",
+            !expanded && "-rotate-90"
+          )}
+        />
+      </button>
+      {expanded && (
+        <div className="mt-1.5 p-3 rounded-md border border-purple-500/20 bg-purple-500/5">
+          <MarkdownRenderer
+            content={reasoning}
+            className="prose-sm text-neutral-300"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 const MessageRow = React.memo(function MessageRow({
   message,
   isLoading,
@@ -205,41 +385,30 @@ const MessageRow = React.memo(function MessageRow({
                       );
                     case "reasoning":
                       return (
-                        <div
+                        <ThinkingBlock
                           key={partIndex}
-                          className="mt-3 p-3 bg-neutral-700/50 rounded-md border border-neutral-600"
-                        >
-                          <span className="text-xs font-medium text-neutral-400 block mb-1">
-                            Reasoning
-                          </span>
-                          <span className="text-sm text-neutral-300">
-                            {part.reasoning}
-                          </span>
-                        </div>
+                          reasoning={part.reasoning}
+                        />
                       );
                     case "tool-invocation":
                       const toolInvocation = part.toolInvocation;
                       const display = getToolDisplay(toolInvocation);
                       const ToolIcon = display.icon;
+                      const args = toolInvocation.args || {};
+                      const isEdit =
+                        toolInvocation.toolName === "str_replace_editor" &&
+                        args.command === "str_replace" &&
+                        (args.old_str || args.new_str);
                       return (
-                        <div
+                        <ToolCallRow
                           key={partIndex}
-                          className="flex items-center gap-1.5 mt-1 text-xs text-neutral-500"
-                        >
-                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/70 shrink-0"></div>
-                          <ToolIcon className="w-3 h-3 flex-shrink-0" />
-                          <span>{display.label}</span>
-                          {display.detail && display.path ? (
-                            <button
-                              onClick={() => onFileClick(display.path!)}
-                              className="text-blue-400/70 font-mono hover:text-blue-300 hover:underline cursor-pointer transition-colors"
-                            >
-                              {display.detail}
-                            </button>
-                          ) : display.detail ? (
-                            <span className="font-mono">{display.detail}</span>
-                          ) : null}
-                        </div>
+                          display={display}
+                          ToolIcon={ToolIcon}
+                          isEdit={!!isEdit}
+                          oldStr={args.old_str as string | undefined}
+                          newStr={args.new_str as string | undefined}
+                          onFileClick={onFileClick}
+                        />
                       );
                     case "source":
                       return (
@@ -280,30 +449,33 @@ const MessageRow = React.memo(function MessageRow({
             ) : null}
           </div>
         </div>
-        <div className="opacity-0 group-hover/msg:opacity-100 transition-opacity">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700/60 text-xs"
-                aria-label="Message actions"
-              >
-                <MoreHorizontal className="h-3.5 w-3.5" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" side="bottom">
-              <DropdownMenuItem onClick={handleCopy}>
-                <Copy />
-                Copy message
+      </div>
+      <div className={cn(
+        "absolute bottom-0 opacity-0 group-hover/msg:opacity-100 transition-opacity z-10",
+        message.role === "user" ? "right-0" : "left-0"
+      )}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700/60 text-xs"
+              aria-label="Message actions"
+            >
+              <MoreHorizontal className="h-3.5 w-3.5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" side="bottom">
+            <DropdownMenuItem onClick={handleCopy}>
+              <Copy />
+              Copy message
+            </DropdownMenuItem>
+            {onCloneFromMessage && (
+              <DropdownMenuItem onClick={onCloneFromMessage}>
+                <GitBranch />
+                Clone from here
               </DropdownMenuItem>
-              {onCloneFromMessage && (
-                <DropdownMenuItem onClick={onCloneFromMessage}>
-                  <GitBranch />
-                  Clone from here
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );

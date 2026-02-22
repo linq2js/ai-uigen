@@ -15,11 +15,16 @@ export async function renameProject(projectId: string, name: string) {
     throw new Error("Name cannot be empty");
   }
 
-  const updated = await prisma.project.update({
-    where: { id: projectId, userId: session.userId },
-    data: { name: trimmed },
-    select: { name: true },
-  });
+  try {
+    const updated = await prisma.project.update({
+      where: { id: projectId, userId: session.userId },
+      data: { name: trimmed },
+      select: { name: true },
+    });
 
-  return updated.name;
+    return updated.name;
+  } catch (error) {
+    console.error("Failed to rename project:", error);
+    throw new Error("Failed to rename project");
+  }
 }

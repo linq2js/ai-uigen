@@ -12,6 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useChat } from "@/lib/contexts/chat-context";
 import { SkillEditor } from "./SkillEditor";
+import { deleteAllProjects } from "@/actions/delete-all-projects";
+import { toast } from "sonner";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -33,6 +35,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [globalRulesInput, setGlobalRulesInput] = useState("");
   const [globalRulesSaved, setGlobalRulesSaved] = useState(false);
 
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
+
   const handleOpen = (isOpen: boolean) => {
     if (isOpen) {
       setKeyInput(apiKey);
@@ -40,6 +45,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       setGlobalRulesInput(globalRules);
       setGlobalRulesSaved(false);
     }
+    setShowClearConfirm(false);
     onOpenChange(isOpen);
   };
 
@@ -55,6 +61,21 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     setKeySaved(false);
   };
 
+  const handleClearAllProjects = async () => {
+    setIsClearing(true);
+    try {
+      const result = await deleteAllProjects();
+      toast.success(`Deleted ${result.count} project${result.count === 1 ? "" : "s"}`);
+      setShowClearConfirm(false);
+      onOpenChange(false);
+      window.location.href = "/";
+    } catch {
+      toast.error("Failed to delete projects");
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
   const handleSaveGlobalRules = () => {
     setGlobalRules(globalRulesInput);
     setGlobalRulesSaved(true);
@@ -67,7 +88,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
-            Configure API key, global rules, and global skills.
+            Configure API key, global rules, global skills, and manage data.
           </DialogDescription>
         </DialogHeader>
 
@@ -76,6 +97,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             <TabsTrigger value="api-key">API Key</TabsTrigger>
             <TabsTrigger value="rules">Global Rules</TabsTrigger>
             <TabsTrigger value="skills">Global Skills</TabsTrigger>
+            <TabsTrigger value="data">Data</TabsTrigger>
           </TabsList>
 
           <TabsContent value="api-key" className="mt-4 space-y-4">
@@ -161,6 +183,52 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
           <TabsContent value="skills" className="mt-4">
             <SkillEditor scope="global" />
+          </TabsContent>
+
+          <TabsContent value="data" className="mt-4 space-y-4">
+            <div className="space-y-2">
+              <h3 className="text-sm font-medium text-neutral-200">
+                Clear All Project Data
+              </h3>
+              <p className="text-xs text-neutral-500">
+                Permanently delete all your projects, including their messages,
+                checkpoints, and generated code. This action cannot be undone.
+              </p>
+            </div>
+            {!showClearConfirm ? (
+              <Button
+                variant="destructive"
+                onClick={() => setShowClearConfirm(true)}
+                className="h-8 bg-red-600 hover:bg-red-700 text-white"
+              >
+                Clear All Projects
+              </Button>
+            ) : (
+              <div className="rounded-md border border-red-800 bg-red-950/50 p-4 space-y-3">
+                <p className="text-sm text-red-300">
+                  Are you sure? This will permanently delete all your projects
+                  and cannot be undone.
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="destructive"
+                    onClick={handleClearAllProjects}
+                    disabled={isClearing}
+                    className="h-8 bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    {isClearing ? "Deleting..." : "Yes, delete everything"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowClearConfirm(false)}
+                    disabled={isClearing}
+                    className="h-8"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </DialogContent>

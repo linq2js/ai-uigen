@@ -11,7 +11,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Send, Paperclip, Square, Settings, ChevronDown, Check } from "lucide-react";
+import { Send, Paperclip, Square, Settings, ChevronDown, Check, Brain } from "lucide-react";
 import { ChatRequestOptions } from "ai";
 import { ChatAttachment, MentionItem } from "@/lib/types/attachments";
 import { AIModel, AI_MODEL_OPTIONS } from "@/lib/types/preferences";
@@ -316,13 +316,19 @@ export function MessageInput({
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border border-blue-500/40 bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 transition-colors cursor-pointer"
+                  className={cn(
+                    "inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border transition-colors cursor-pointer",
+                    aiModel.includes("Thinking")
+                      ? "border-purple-500/40 bg-purple-500/15 text-purple-400 hover:bg-purple-500/25"
+                      : "border-blue-500/40 bg-blue-500/15 text-blue-400 hover:bg-blue-500/25"
+                  )}
                 >
+                  {aiModel.includes("Thinking") && <Brain className="w-3 h-3" />}
                   <span>{aiModel}</span>
                   <ChevronDown className="w-3 h-3 opacity-50" />
                 </button>
               </PopoverTrigger>
-              <PopoverContent align="start" className="w-44 p-1" sideOffset={6}>
+              <PopoverContent align="start" className="w-52 p-1" sideOffset={6}>
                 {AI_MODEL_OPTIONS.map((option) => (
                   <button
                     key={option}
@@ -331,17 +337,20 @@ export function MessageInput({
                     className={cn(
                       "flex items-center w-full gap-2 px-3 py-1.5 text-sm rounded-md transition-colors cursor-pointer",
                       option === aiModel
-                        ? "bg-blue-500/15 text-blue-400 font-medium"
+                        ? option.includes("Thinking") ? "bg-purple-500/15 text-purple-400 font-medium" : "bg-blue-500/15 text-blue-400 font-medium"
                         : "text-neutral-300 hover:bg-neutral-700"
                     )}
                   >
                     <Check
                       className={cn(
                         "w-3.5 h-3.5 shrink-0",
-                        option === aiModel ? "opacity-100 text-blue-400" : "opacity-0"
+                        option === aiModel
+                          ? option.includes("Thinking") ? "opacity-100 text-purple-400" : "opacity-100 text-blue-400"
+                          : "opacity-0"
                       )}
                     />
-                    {option}
+                    <span className="whitespace-nowrap">{option}</span>
+                    {option.includes("Thinking") && <Brain className="w-3 h-3 text-purple-400 shrink-0 ml-auto" />}
                   </button>
                 ))}
               </PopoverContent>

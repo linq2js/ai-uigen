@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import type { Skill } from "@/lib/types/skill";
 import { getProjectSkills } from "@/actions/get-project-skills";
 import { saveProjectSkills } from "@/actions/save-project-skills";
@@ -25,7 +26,9 @@ export function useProjectSkills(projectId?: string) {
   const persist = useCallback(
     (next: Skill[]) => {
       if (!projectId) return;
-      saveProjectSkills(projectId, next).catch(console.error);
+      saveProjectSkills(projectId, next).catch(() =>
+        toast.error("Failed to save skills")
+      );
     },
     [projectId],
   );

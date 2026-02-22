@@ -8,8 +8,13 @@ export async function saveProjectSkills(projectId: string, skills: Skill[]) {
   const session = await getSession();
   if (!session) throw new Error("Unauthorized");
 
-  await prisma.project.update({
-    where: { id: projectId, userId: session.userId },
-    data: { skills: JSON.stringify(skills) },
-  });
+  try {
+    await prisma.project.update({
+      where: { id: projectId, userId: session.userId },
+      data: { skills: JSON.stringify(skills) },
+    });
+  } catch (error) {
+    console.error("Failed to save project skills:", error);
+    throw new Error("Failed to save project skills");
+  }
 }

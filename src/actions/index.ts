@@ -75,6 +75,8 @@ export async function signIn(
     });
 
     if (!user) {
+      // Always run compare to prevent timing attacks
+      await bcrypt.compare(password, "$2b$10$invalidhashpadding000000000000000000000000000");
       return { success: false, error: "Invalid credentials" };
     }
 

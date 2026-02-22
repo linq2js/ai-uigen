@@ -2,6 +2,7 @@
 
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { safeJsonParse } from "@/lib/safe-json";
 
 export async function getProject(projectId: string) {
   const session = await getSession();
@@ -30,8 +31,8 @@ export async function getProject(projectId: string) {
   return {
     id: project.id,
     name: project.name,
-    messages: JSON.parse(project.messages),
-    data: JSON.parse(project.data),
+    messages: safeJsonParse(project.messages, []),
+    data: safeJsonParse(project.data, {}),
     published: project.published,
     messageCount: project.messageCount,
     totalInputTokens: project.totalInputTokens,
