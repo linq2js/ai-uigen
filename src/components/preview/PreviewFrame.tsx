@@ -1,17 +1,24 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useFileSystem } from "@/lib/contexts/file-system-context";
 import {
   createImportMap,
   createPreviewHTML,
 } from "@/lib/transform/jsx-transformer";
-import { AlertCircle, Monitor, Smartphone, Tablet, ChevronDown, RotateCw, RefreshCw } from "lucide-react";
+import { AlertCircle, Monitor, Smartphone, Tablet, ChevronDown, RotateCw, RefreshCw, Terminal, X, Trash2 } from "lucide-react";
 import {
   Popover,
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover";
+
+export interface LogEntry {
+  level: "error" | "warn" | "info";
+  message: string;
+  timestamp: number;
+  source: "client" | "build";
+}
 
 interface DevicePreset {
   name: string;
@@ -50,6 +57,60 @@ export function PreviewFrame() {
   const [isRotated, setIsRotated] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [showLogs, setShowLogs] = useState(false);
+  const [logsPanelHeight, setLogsPanelHeight] = useState(220);
+  const logsEndRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef = useRef(false);
+  const dragStartYRef = useRef(0);
+  const dragStartHeightRef = useRef(0);
+
+  const addLog = useCallback((entry: LogEntry) => {
+    setLogs((prev) => [...prev.slice(-499), entry]);
+  }, []);
+
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDraggingRef.current = true;
+    dragStartYRef.current = e.clientY;
+    dragStartHeightRef.current = logsPanelHeight;
+
+    const handleMouseMove = (ev: MouseEvent) => {
+      if (!isDraggingRef.current) return;
+      const delta = dragStartYRef.current - ev.clientY;
+      const newHeight = Math.min(Math.max(dragStartHeightRef.current + delta, 80), window.innerHeight * 0.7);
+      setLogsPanelHeight(newHeight);
+    };
+
+    const handleMouseUp = () => {
+      isDraggingRef.current = false;
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    document.body.style.cursor = "row-resize";
+    document.body.style.userSelect = "none";
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  }, [logsPanelHeight]);
+
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === "__PREVIEW_LOG__" && event.data.log) {
+        addLog(event.data.log as LogEntry);
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [addLog]);
+
+  useEffect(() => {
+    if (showLogs && logsEndRef.current) {
+      logsEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [logs, showLogs]);
 
   // Hydrate device state from localStorage
   useEffect(() => {
@@ -101,14 +162,6 @@ export function PreviewFrame() {
           if (found) {
             foundEntryPoint = found;
             setEntryPoint(found);
-          } else if (files.size > 0) {
-            const firstJSX = Array.from(files.keys()).find(
-              (path) => path.endsWith(".jsx") || path.endsWith(".tsx")
-            );
-            if (firstJSX) {
-              foundEntryPoint = firstJSX;
-              setEntryPoint(firstJSX);
-            }
           }
         }
 
@@ -134,6 +187,17 @@ export function PreviewFrame() {
 
         const { importMap, styles, errors } = createImportMap(files);
         const previewHTML = createPreviewHTML(foundEntryPoint, importMap, styles, errors);
+
+        if (errors.length > 0) {
+          const now = Date.now();
+          const buildLogs: LogEntry[] = errors.map((e) => ({
+            level: "error" as const,
+            message: `[${e.path}] ${e.error}`,
+            timestamp: now,
+            source: "build" as const,
+          }));
+          setLogs((prev) => [...prev.slice(-499 + buildLogs.length), ...buildLogs]);
+        }
 
         setPreviewHTML(previewHTML);
         setError(null);
@@ -201,6 +265,7 @@ export function PreviewFrame() {
   const displayWidth = activeWidth ?? customWidth;
   const displayHeight = activeHeight ?? customHeight;
   const isResponsive = selectedDevice === null;
+  const errorCount = logs.filter((l) => l.level === "error").length;
 
   const deviceToolbar = (
     <div className="flex items-center gap-2 px-3 py-1.5 border-b border-neutral-700 bg-neutral-900 text-sm shrink-0">
@@ -302,11 +367,36 @@ export function PreviewFrame() {
 
       {/* Refresh button */}
       <button
-        onClick={() => setIframeKey((k) => k + 1)}
+        onClick={() => { setIframeKey((k) => k + 1); setLogs([]); }}
         className="p-1 rounded hover:bg-neutral-700 transition-colors text-neutral-500 hover:text-neutral-300"
         title="Refresh preview"
       >
         <RefreshCw className="h-3.5 w-3.5" />
+      </button>
+
+      <div className="flex-1" />
+
+      {/* Logs button */}
+      <button
+        onClick={() => setShowLogs((v) => !v)}
+        className={`flex items-center gap-1.5 px-2 py-1 rounded-md transition-colors text-xs font-medium ${
+          showLogs
+            ? "bg-neutral-700 text-neutral-200"
+            : "hover:bg-neutral-700 text-neutral-500 hover:text-neutral-300"
+        }`}
+        title="Toggle error logs"
+      >
+        <Terminal className="h-3.5 w-3.5" />
+        <span>Logs</span>
+        {logs.length > 0 && (
+          <span className={`flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold leading-none ${
+            errorCount > 0
+              ? "bg-red-500/90 text-white"
+              : "bg-neutral-600 text-neutral-200"
+          }`}>
+            {logs.length > 99 ? "99+" : logs.length}
+          </span>
+        )}
       </button>
     </div>
   );
@@ -369,12 +459,94 @@ export function PreviewFrame() {
     );
   }
 
+  const logsPanel = showLogs && (
+    <div className="border-t border-neutral-700 bg-neutral-950 flex flex-col shrink-0" style={{ height: logsPanelHeight }}>
+      {/* Resize handle */}
+      <div
+        onMouseDown={handleResizeStart}
+        className="h-1.5 cursor-row-resize shrink-0 group flex items-center justify-center hover:bg-neutral-800 transition-colors"
+      >
+        <div className="w-8 h-0.5 rounded-full bg-neutral-700 group-hover:bg-neutral-500 transition-colors" />
+      </div>
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-neutral-800 shrink-0">
+        <span className="text-xs font-medium text-neutral-400">
+          Logs
+          {logs.length > 0 && (
+            <span className="ml-1.5 text-neutral-600">({logs.length})</span>
+          )}
+        </span>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setLogs([])}
+            className="p-1 rounded hover:bg-neutral-800 transition-colors text-neutral-600 hover:text-neutral-400"
+            title="Clear logs"
+          >
+            <Trash2 className="h-3 w-3" />
+          </button>
+          <button
+            onClick={() => setShowLogs(false)}
+            className="p-1 rounded hover:bg-neutral-800 transition-colors text-neutral-600 hover:text-neutral-400"
+            title="Close logs"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto font-mono text-xs">
+        {logs.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-neutral-600 text-xs">
+            No logs yet
+          </div>
+        ) : (
+          logs.map((entry, i) => (
+            <div
+              key={i}
+              className={`flex gap-2 px-3 py-1.5 border-b border-neutral-900 ${
+                entry.level === "error"
+                  ? "bg-red-500/5 text-red-400"
+                  : entry.level === "warn"
+                  ? "bg-yellow-500/5 text-yellow-400"
+                  : "text-neutral-400"
+              }`}
+            >
+              <span className="shrink-0 text-neutral-600 tabular-nums select-none">
+                {new Date(entry.timestamp).toLocaleTimeString()}
+              </span>
+              <span
+                className={`shrink-0 uppercase text-[10px] font-bold px-1 py-0.5 rounded leading-none ${
+                  entry.level === "error"
+                    ? "bg-red-500/20 text-red-400"
+                    : entry.level === "warn"
+                    ? "bg-yellow-500/20 text-yellow-400"
+                    : "bg-blue-500/20 text-blue-400"
+                }`}
+              >
+                {entry.level}
+              </span>
+              <span
+                className={`shrink-0 text-[10px] px-1 py-0.5 rounded leading-none ${
+                  entry.source === "build"
+                    ? "bg-purple-500/20 text-purple-400"
+                    : "bg-neutral-700 text-neutral-500"
+                }`}
+              >
+                {entry.source}
+              </span>
+              <span className="break-all whitespace-pre-wrap">{entry.message}</span>
+            </div>
+          ))
+        )}
+        <div ref={logsEndRef} />
+      </div>
+    </div>
+  );
+
   return (
     <div className="h-full flex flex-col">
       {deviceToolbar}
       <div
         ref={containerRef}
-        className="flex-1 overflow-auto bg-neutral-800 flex items-start justify-center"
+        className="flex-1 overflow-auto bg-neutral-800 flex items-start justify-center min-h-0"
       >
         <div
           className={isResponsive ? "w-full h-full" : "bg-white border border-neutral-700 my-4 mx-auto shrink-0"}
@@ -390,6 +562,7 @@ export function PreviewFrame() {
           />
         </div>
       </div>
+      {logsPanel}
     </div>
   );
 }

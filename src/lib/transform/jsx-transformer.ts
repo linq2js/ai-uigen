@@ -20,6 +20,83 @@ export { ${componentName} };
 }
 
 
+function resolveImportPath(fromFile: string, importPath: string): string {
+  if (!importPath.startsWith("./") && !importPath.startsWith("../")) {
+    return importPath;
+  }
+  const fromDir = fromFile.substring(0, fromFile.lastIndexOf("/")) || "/";
+  const parts = fromDir.split("/").filter(Boolean);
+  const relParts = importPath.split("/");
+
+  for (const part of relParts) {
+    if (part === "..") {
+      parts.pop();
+    } else if (part !== ".") {
+      parts.push(part);
+    }
+  }
+
+  // Return bare specifier (no leading /) so import maps can match
+  // in about:srcdoc context where URL-like specifiers fail
+  return parts.join("/");
+}
+
+function toBareSpecifier(specifier: string): string {
+  if (specifier.startsWith("/")) return specifier.substring(1);
+  return specifier;
+}
+
+function createResolveRelativeImportsPlugin(filename: string) {
+  return function resolveRelativeImportsPlugin() {
+    function rewrite(src: string): string {
+      if (src.startsWith("./") || src.startsWith("../")) {
+        return resolveImportPath(filename, src);
+      }
+      if (src.startsWith("/")) {
+        return toBareSpecifier(src);
+      }
+      return src;
+    }
+
+    return {
+      visitor: {
+        ImportDeclaration(path: { node: { source: { value: string } } }) {
+          const result = rewrite(path.node.source.value);
+          if (result !== path.node.source.value) {
+            path.node.source.value = result;
+          }
+        },
+        ExportNamedDeclaration(path: { node: { source?: { value: string } | null } }) {
+          if (path.node.source) {
+            const result = rewrite(path.node.source.value);
+            if (result !== path.node.source.value) {
+              path.node.source.value = result;
+            }
+          }
+        },
+        ExportAllDeclaration(path: { node: { source: { value: string } } }) {
+          const result = rewrite(path.node.source.value);
+          if (result !== path.node.source.value) {
+            path.node.source.value = result;
+          }
+        },
+        CallExpression(path: { node: { callee: { type: string }; arguments: Array<{ type: string; value: string }> } }) {
+          if (
+            path.node.callee.type === "Import" &&
+            path.node.arguments.length > 0 &&
+            path.node.arguments[0].type === "StringLiteral"
+          ) {
+            const result = rewrite(path.node.arguments[0].value);
+            if (result !== path.node.arguments[0].value) {
+              path.node.arguments[0].value = result;
+            }
+          }
+        },
+      },
+    };
+  };
+}
+
 export function transformJSX(
   code: string,
   filename: string,
@@ -28,28 +105,26 @@ export function transformJSX(
   try {
     const isTypeScript = filename.endsWith(".ts") || filename.endsWith(".tsx");
 
-    // Pre-process imports to handle missing files
     let processedCode = code;
     const importRegex =
       /import\s+(?:{[^}]+}|[^,\s]+)?\s*(?:,\s*{[^}]+})?\s+from\s+['"]([^'"]+)['"]/g;
     const imports = new Set<string>();
     const cssImports = new Set<string>();
 
-    // Detect CSS imports
     const cssImportRegex = /import\s+['"]([^'"]+\.css)['"]/g;
     let cssMatch;
     while ((cssMatch = cssImportRegex.exec(code)) !== null) {
       cssImports.add(cssMatch[1]);
     }
 
-    // Remove CSS imports from code
     processedCode = processedCode.replace(cssImportRegex, '');
 
     let match;
     while ((match = importRegex.exec(code)) !== null) {
-      // Skip CSS files from regular imports
       if (!match[1].endsWith('.css')) {
-        imports.add(match[1]);
+        let resolved = resolveImportPath(filename, match[1]);
+        if (resolved.startsWith("/")) resolved = resolved.substring(1);
+        imports.add(resolved);
       }
     }
 
@@ -59,7 +134,7 @@ export function transformJSX(
         ["react", { runtime: "automatic" }],
         ...(isTypeScript ? ["typescript"] : []),
       ],
-      plugins: [],
+      plugins: [createResolveRelativeImportsPlugin(filename)],
     });
 
     return {
@@ -131,19 +206,22 @@ export function createImportMap(files: Map<string, string>): ImportMapResult {
       const blobUrl = createBlobURL(code);
       transformedFiles.set(path, blobUrl);
 
-      // Collect all imports
+      // Collect all imports (already resolved to bare specifiers)
       if (missingImports) {
         missingImports.forEach((imp) => {
-          // Check if this is a third-party package
-          const isPackage = !imp.startsWith(".") && 
-                            !imp.startsWith("/") && 
-                            !imp.startsWith("@/");
+          if (imports[imp]) return;
+
+          const isLocalFile = imp.startsWith("@/") ||
+            imp.startsWith("/") ||
+            imp.includes("/") && existingFiles.has("/" + imp) ||
+            imp.includes("/") && existingFiles.has("/" + imp + ".tsx") ||
+            imp.includes("/") && existingFiles.has("/" + imp + ".ts") ||
+            imp.includes("/") && existingFiles.has("/" + imp + ".jsx") ||
+            imp.includes("/") && existingFiles.has("/" + imp + ".js");
           
-          if (isPackage) {
-            // Add third-party packages directly to import map
+          if (!isLocalFile) {
             imports[imp] = `https://esm.sh/${imp}`;
           } else {
-            // Add local imports to be processed later
             allImports.add(imp);
           }
         });
@@ -210,31 +288,24 @@ export function createImportMap(files: Map<string, string>): ImportMapResult {
 
   // Second pass: create placeholder modules for missing imports
   for (const importPath of allImports) {
-    // Skip if it's a known module or already exists
     if (imports[importPath] || importPath.startsWith("react")) {
       continue;
     }
 
-    // Check if this is a third-party package (no relative path indicators)
-    const isPackage = !importPath.startsWith(".") && 
-                      !importPath.startsWith("/") && 
-                      !importPath.startsWith("@/");
-
-    if (isPackage) {
-      // Handle third-party packages from esm.sh
-      const packageUrl = `https://esm.sh/${importPath}`;
-      imports[importPath] = packageUrl;
-      continue;
-    }
-
     // Check if the import exists in any form (local files)
+    // Import paths are now bare specifiers, so also check with leading /
     let found = false;
     const variations = [
       importPath,
+      "/" + importPath,
       importPath + ".jsx",
       importPath + ".tsx",
       importPath + ".js",
       importPath + ".ts",
+      "/" + importPath + ".jsx",
+      "/" + importPath + ".tsx",
+      "/" + importPath + ".js",
+      "/" + importPath + ".ts",
       importPath.replace("@/", "/"),
       importPath.replace("@/", "/") + ".jsx",
       importPath.replace("@/", "/") + ".tsx",
@@ -389,6 +460,31 @@ export function createPreviewHTML(
   </script>
 </head>
 <body>
+  <script>
+    (function() {
+      var logs = [];
+      function send(level, args) {
+        var msg = Array.prototype.slice.call(args).map(function(a) {
+          if (a instanceof Error) return a.message + '\\n' + (a.stack || '');
+          if (typeof a === 'object') try { return JSON.stringify(a, null, 2); } catch(e) { return String(a); }
+          return String(a);
+        }).join(' ');
+        var entry = { level: level, message: msg, timestamp: Date.now(), source: 'client' };
+        logs.push(entry);
+        try { window.parent.postMessage({ type: '__PREVIEW_LOG__', log: entry }, '*'); } catch(e) {}
+      }
+      var origError = console.error;
+      var origWarn = console.warn;
+      console.error = function() { send('error', arguments); origError.apply(console, arguments); };
+      console.warn = function() { send('warn', arguments); origWarn.apply(console, arguments); };
+      window.onerror = function(msg, source, line, col, err) {
+        send('error', [err || (msg + ' at ' + source + ':' + line + ':' + col)]);
+      };
+      window.addEventListener('unhandledrejection', function(e) {
+        send('error', ['Unhandled Promise Rejection: ' + (e.reason instanceof Error ? e.reason.message + '\\n' + e.reason.stack : String(e.reason))]);
+      });
+    })();
+  </script>
   ${errors.length > 0 ? `
     <div class="syntax-errors">
       <h3>
@@ -430,7 +526,7 @@ export function createPreviewHTML(
       }
 
       componentDidCatch(error, errorInfo) {
-        console.error('Error caught by boundary:', error, errorInfo);
+        console.error('React Error Boundary:', error, errorInfo?.componentStack || '');
       }
 
       render() {

@@ -237,7 +237,28 @@ export function CodeEditor({ readOnly = false }: { readOnly?: boolean }) {
       navigateToDefinition(currentPath, word.word);
     });
 
-    disposablesRef.current = [defProvider, editorOpener, mouseHandler];
+    // Cmd+L / Ctrl+L: mention selected code range in chat input
+    const mentionAction = editor.addAction({
+      id: "mention-code-in-chat",
+      label: "Mention in Chat",
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyL],
+      run(ed: any) {
+        const sel = ed.getSelection();
+        const currentPath = selectedFileRef.current;
+        if (!sel || !currentPath) return;
+
+        const startLine = sel.startLineNumber;
+        const endLine = sel.endLineNumber;
+
+        window.dispatchEvent(
+          new CustomEvent("mention-code-selection", {
+            detail: { file: currentPath, startLine, endLine },
+          })
+        );
+      },
+    });
+
+    disposablesRef.current = [defProvider, editorOpener, mouseHandler, mentionAction];
   };
 
   // Keep a ref to selectedFile so callbacks always have the latest value

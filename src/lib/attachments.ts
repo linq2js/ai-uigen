@@ -7,8 +7,10 @@ export interface StoredAttachment {
 }
 
 /**
- * Walks the messages array and collects all attachments into a Map keyed by filename.
- * Handles duplicate names by appending a suffix.
+ * Walks the messages array and collects **non-image** attachments into a Map
+ * keyed by filename.  Image attachments are kept on the user messages so the
+ * AI SDK sends them as native image content blocks (~1,600 tokens each instead
+ * of ~57K when base64 is returned as text via a tool result).
  */
 export function collectAttachments(
   messages: any[]
@@ -20,6 +22,8 @@ export function collectAttachments(
 
     for (const att of msg.experimental_attachments) {
       const isImage = att.contentType?.startsWith("image/") ?? false;
+      if (isImage) continue; // images stay on the message as native content
+
       const base64Data = extractBase64(att.url);
       if (!base64Data) continue;
 
@@ -28,7 +32,7 @@ export function collectAttachments(
         name,
         contentType: att.contentType || "application/octet-stream",
         base64Data,
-        isImage,
+        isImage: false,
       });
     }
   }
@@ -37,9 +41,13 @@ export function collectAttachments(
 }
 
 /**
- * Returns a new messages array where all user messages except the last one
- * have their experimental_attachments stripped and replaced with a text marker.
- * The last user message keeps its attachments for immediate model consumption.
+ * Returns a new messages array where non-image attachments on older user
+ * messages are stripped and replaced with a text marker.  Image attachments
+ * are **kept** on every user message so the AI SDK converts them to native
+ * image content blocks (Anthropic vision API: ~1,600 tokens per image instead
+ * of ~57K when the base64 ends up as text in a tool result).
+ *
+ * The last user message always keeps all attachments unchanged.
  */
 export function stripOldAttachments(messages: any[]): any[] {
   let lastUserIdx = -1;
@@ -59,12 +67,24 @@ export function stripOldAttachments(messages: any[]): any[] {
       return msg;
     }
 
-    const names = msg.experimental_attachments.map(
-      (a: any) => a.name || "unnamed"
+    const imageAtts = msg.experimental_attachments.filter(
+      (a: any) => a.contentType?.startsWith("image/")
     );
+    const nonImageAtts = msg.experimental_attachments.filter(
+      (a: any) => !a.contentType?.startsWith("image/")
+    );
+
+    // Nothing to strip — all attachments are images
+    if (nonImageAtts.length === 0) return msg;
+
+    const names = nonImageAtts.map((a: any) => a.name || "unnamed");
     const marker = `\n\n[Attached files: ${names.join(", ")}]`;
     const content =
       typeof msg.content === "string" ? msg.content + marker : marker;
+
+    if (imageAtts.length > 0) {
+      return { ...msg, content, experimental_attachments: imageAtts };
+    }
 
     const { experimental_attachments: _, ...rest } = msg;
     return { ...rest, content };

@@ -6,13 +6,77 @@ import { buildFileManagerTool } from "@/lib/tools/file-manager";
 import { buildReadSkillTool } from "@/lib/tools/read-skill";
 import { buildReadAttachmentTool } from "@/lib/tools/read-attachment";
 import { collectAttachments, stripOldAttachments } from "@/lib/attachments";
+import { truncateMessages } from "@/lib/truncate-messages";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { getLanguageModel } from "@/lib/provider";
 import { buildSystemPrompt } from "@/lib/prompts/prompt-builder";
-import { DEFAULT_PREFERENCES, type GenerationPreferences, MAX_STEPS_MIN, MAX_STEPS_MAX } from "@/lib/types/preferences";
+import {
+  DEFAULT_PREFERENCES,
+  type GenerationPreferences,
+  MAX_STEPS_MIN,
+  MAX_STEPS_MAX,
+} from "@/lib/types/preferences";
 import { toDescriptor, type Skill } from "@/lib/types/skill";
 import { getSystemSkills } from "@/lib/skills/system";
+import { logMessages } from "@/lib/debug-logger";
+
+function stringifyResult(result: unknown): string {
+  if (result == null) return "";
+  if (typeof result === "string") return result;
+  return JSON.stringify(result);
+}
+
+function sanitizeToolResults(messages: any[]): any[] {
+  return messages.map((msg) => {
+    let patched = msg;
+
+    // Handle parts format (newer AI SDK)
+    if (msg.parts) {
+      const parts = msg.parts.map((part: any) => {
+        if (
+          part.type === "tool-invocation" &&
+          part.toolInvocation?.state === "result" &&
+          typeof part.toolInvocation.result !== "string"
+        ) {
+          return {
+            ...part,
+            toolInvocation: {
+              ...part.toolInvocation,
+              result: stringifyResult(part.toolInvocation.result),
+            },
+          };
+        }
+        return part;
+      });
+      patched = { ...patched, parts };
+    }
+
+    // Handle toolInvocations format (legacy AI SDK)
+    if (msg.toolInvocations) {
+      const toolInvocations = msg.toolInvocations.map((inv: any) => {
+        if (inv.state === "result" && typeof inv.result !== "string") {
+          return { ...inv, result: stringifyResult(inv.result) };
+        }
+        return inv;
+      });
+      patched = { ...patched, toolInvocations };
+    }
+
+    // Handle content array format (provider-level messages)
+    if (Array.isArray(msg.content)) {
+      const content = msg.content.map((block: any) => {
+        if (block.type === "tool-result" && typeof block.result !== "string") {
+          return { ...block, result: stringifyResult(block.result) };
+        }
+        return block;
+      });
+      patched = { ...patched, content };
+    }
+
+    return patched;
+  });
+}
 
 export async function POST(req: Request) {
   const {
@@ -40,17 +104,16 @@ export async function POST(req: Request) {
   const allSkills = [...systemSkills, ...enabledUserSkills];
   const skillDescriptors = allSkills.map(toDescriptor);
 
-  // Collect all attachments from the conversation for the read_attachment tool,
-  // then strip old attachments from history to reduce payload size.
-  // The last user message keeps its attachments embedded for immediate analysis.
   const attachmentStore = collectAttachments(messages);
-  const strippedMessages = stripOldAttachments(messages);
+  const strippedMessages = sanitizeToolResults(stripOldAttachments(messages));
 
-  const attachmentDescriptors = Array.from(attachmentStore.values()).map((a) => ({
-    name: a.name,
-    contentType: a.contentType,
-    isImage: a.isImage,
-  }));
+  const attachmentDescriptors = Array.from(attachmentStore.values()).map(
+    (a) => ({
+      name: a.name,
+      contentType: a.contentType,
+      isImage: a.isImage,
+    })
+  );
 
   strippedMessages.unshift({
     role: "system",
@@ -58,12 +121,15 @@ export async function POST(req: Request) {
       globalRules,
       projectRules,
       skills: skillDescriptors.length > 0 ? skillDescriptors : undefined,
-      attachments: attachmentDescriptors.length > 0 ? attachmentDescriptors : undefined,
+      attachments:
+        attachmentDescriptors.length > 0 ? attachmentDescriptors : undefined,
     }),
     providerOptions: {
       anthropic: { cacheControl: { type: "ephemeral" } },
     },
   });
+
+  const truncatedMessages = truncateMessages(strippedMessages);
 
   // Reconstruct the VirtualFileSystem from serialized data
   const fileSystem = new VirtualFileSystem();
@@ -76,11 +142,16 @@ export async function POST(req: Request) {
   const isMockProvider = !effectiveKey || !effectiveKey.startsWith("sk-ant-");
   const requestedSteps = Math.min(
     MAX_STEPS_MAX,
-    Math.max(MAX_STEPS_MIN, preferences?.maxSteps ?? DEFAULT_PREFERENCES.maxSteps)
+    Math.max(
+      MAX_STEPS_MIN,
+      preferences?.maxSteps ?? DEFAULT_PREFERENCES.maxSteps
+    )
   );
+  logMessages("MESSAGES SENT TO ANTHROPIC", truncatedMessages);
+
   const result = streamText({
     model,
-    messages: strippedMessages,
+    messages: truncatedMessages,
     maxTokens: 10_000,
     maxSteps: isMockProvider ? Math.min(4, requestedSteps) : requestedSteps,
     onError: (err: any) => {
@@ -96,7 +167,7 @@ export async function POST(req: Request) {
         read_attachment: buildReadAttachmentTool(attachmentStore),
       }),
     },
-    onFinish: async ({ response }) => {
+    onFinish: async ({ response, usage }) => {
       if (projectId) {
         try {
           const session = await getSession();
@@ -113,6 +184,13 @@ export async function POST(req: Request) {
             responseMessages,
           });
 
+          const userMsgCount = allMessages.filter(
+            (m: any) => m.role === "user"
+          ).length;
+          const assistantMsgCount = allMessages.filter(
+            (m: any) => m.role === "assistant"
+          ).length;
+
           await prisma.project.update({
             where: {
               id: projectId,
@@ -121,6 +199,13 @@ export async function POST(req: Request) {
             data: {
               messages: JSON.stringify(allMessages),
               data: JSON.stringify(fileSystem.serialize()),
+              messageCount: userMsgCount + assistantMsgCount,
+              totalInputTokens: {
+                increment: usage.promptTokens,
+              },
+              totalOutputTokens: {
+                increment: usage.completionTokens,
+              },
             },
           });
         } catch (error) {

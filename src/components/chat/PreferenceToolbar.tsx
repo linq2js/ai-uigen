@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, Check, Accessibility } from "lucide-react";
+import { ChevronDown, Check, Accessibility, RotateCcw } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -21,6 +21,7 @@ interface PreferenceToolbarProps {
     value: GenerationPreferences[K]
   ) => void;
   isDefault: <K extends keyof GenerationPreferences>(key: K) => boolean;
+  onReset?: () => void;
 }
 
 function CategoryChip({
@@ -98,9 +99,12 @@ export function PreferenceToolbar({
   preferences,
   setPreference,
   isDefault,
+  onReset,
 }: PreferenceToolbarProps) {
+  const hasModified = PREFERENCE_CATEGORIES.some((c) => !isDefault(c.key)) || preferences.accessibility;
+
   return (
-    <div className="flex flex-wrap gap-1.5 pb-1.5 pt-2 px-3 bg-neutral-900 rounded-t-xl">
+    <div className="flex flex-wrap items-center gap-1.5 pb-1.5 pt-2 px-3 bg-neutral-900 rounded-t-xl">
       {PREFERENCE_CATEGORIES.map((category) => {
         const currentValue = preferences[category.key] as string;
         const modified = !isDefault(category.key);
@@ -130,6 +134,19 @@ export function PreferenceToolbar({
         <Accessibility className="w-3.5 h-3.5" />
         <span>A11y</span>
       </button>
+
+      {/* Reset button */}
+      {hasModified && onReset && (
+        <button
+          type="button"
+          onClick={onReset}
+          className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium text-neutral-500 hover:text-neutral-300 hover:bg-neutral-700/50 transition-colors cursor-pointer"
+          title="Reset all to Auto"
+        >
+          <RotateCcw className="w-3 h-3" />
+          <span>Reset</span>
+        </button>
+      )}
     </div>
   );
 }

@@ -35,6 +35,12 @@ export function buildReadAttachmentTool(
       return { type: "text" as const, text };
     },
     experimental_toToolResultContent(result) {
+      if (typeof result === "string") {
+        return [{ type: "text" as const, text: result }];
+      }
+      if (Array.isArray(result)) {
+        return result;
+      }
       if (result.type === "image") {
         return [
           { type: "image" as const, data: result.data, mimeType: result.mimeType },
@@ -43,7 +49,7 @@ export function buildReadAttachmentTool(
       if (result.type === "error") {
         return [{ type: "text" as const, text: result.message }];
       }
-      return [{ type: "text" as const, text: result.text }];
+      return [{ type: "text" as const, text: result.text ?? JSON.stringify(result) }];
     },
   });
 }

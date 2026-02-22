@@ -8,6 +8,7 @@ import type { Skill } from "@/lib/types/skill";
 
 interface SkillEditorProps {
   projectId?: string;
+  scope?: "global" | "project";
 }
 
 interface SkillFormData {
@@ -18,7 +19,7 @@ interface SkillFormData {
 
 const EMPTY_FORM: SkillFormData = { name: "", description: "", content: "" };
 
-export function SkillEditor({ projectId }: SkillEditorProps) {
+export function SkillEditor({ projectId, scope }: SkillEditorProps) {
   const {
     globalSkills,
     addGlobalSkill,
@@ -89,79 +90,86 @@ export function SkillEditor({ projectId }: SkillEditorProps) {
 
   const isFormVisible = formMode.type !== "hidden";
 
+  const showGlobal = !scope || scope === "global";
+  const showProject = !scope || scope === "project";
+
   return (
     <div className="space-y-4">
       {/* Global Skills */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h4 className="text-sm font-medium text-neutral-200">
-            Global Skills
-          </h4>
-          {!isFormVisible && (
-            <Button
-              variant="outline"
-              className="h-7 gap-1.5 text-xs"
-              onClick={() => openAdd("global")}
-            >
-              <Plus className="h-3 w-3" />
-              Add
-            </Button>
-          )}
-        </div>
-        {globalSkills.length === 0 && !isFormVisible && (
-          <p className="text-xs text-neutral-500 py-2">
-            No global skills yet. Skills provide specialized knowledge the AI loads on demand.
-          </p>
-        )}
-        <SkillList
-          skills={globalSkills}
-          scope="global"
-          onToggle={toggleGlobalSkill}
-          onEdit={(skill) => openEdit(skill, "global")}
-          onDelete={deleteGlobalSkill}
-          disabled={isFormVisible}
-        />
-      </div>
-
-      {/* Project Skills */}
-      <div className="border-t border-neutral-800" />
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h4 className="text-sm font-medium text-neutral-200">
-            Project Skills
-          </h4>
-          {!isFormVisible && projectId && (
-            <Button
-              variant="outline"
-              className="h-7 gap-1.5 text-xs"
-              onClick={() => openAdd("project")}
-            >
-              <Plus className="h-3 w-3" />
-              Add
-            </Button>
-          )}
-        </div>
-        {!projectId ? (
-          <div className="rounded-md border border-neutral-800 bg-neutral-900 px-4 py-4 text-center">
-            <p className="text-xs text-neutral-500">
-              Sign in and open a project to add project-specific skills.
-            </p>
+      {showGlobal && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-medium text-neutral-200">
+              Global Skills
+            </h4>
+            {!isFormVisible && (
+              <Button
+                variant="outline"
+                className="h-7 gap-1.5 text-xs"
+                onClick={() => openAdd("global")}
+              >
+                <Plus className="h-3 w-3" />
+                Add
+              </Button>
+            )}
           </div>
-        ) : projectSkills.length === 0 && !isFormVisible ? (
-          <p className="text-xs text-neutral-500 py-2">
-            No project skills yet.
-          </p>
-        ) : (
+          {globalSkills.length === 0 && !isFormVisible && (
+            <p className="text-xs text-neutral-500 py-2">
+              No global skills yet. Skills provide specialized knowledge the AI loads on demand.
+            </p>
+          )}
           <SkillList
-            skills={projectSkills}
-            scope="project"
-            onToggle={toggleProjectSkill}
-            onEdit={(skill) => openEdit(skill, "project")}
-            onDelete={deleteProjectSkill}
+            skills={globalSkills}
+            scope="global"
+            onToggle={toggleGlobalSkill}
+            onEdit={(skill) => openEdit(skill, "global")}
+            onDelete={deleteGlobalSkill}
             disabled={isFormVisible}
           />
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Project Skills */}
+      {showGlobal && showProject && <div className="border-t border-neutral-800" />}
+      {showProject && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-medium text-neutral-200">
+              Project Skills
+            </h4>
+            {!isFormVisible && projectId && (
+              <Button
+                variant="outline"
+                className="h-7 gap-1.5 text-xs"
+                onClick={() => openAdd("project")}
+              >
+                <Plus className="h-3 w-3" />
+                Add
+              </Button>
+            )}
+          </div>
+          {!projectId ? (
+            <div className="rounded-md border border-neutral-800 bg-neutral-900 px-4 py-4 text-center">
+              <p className="text-xs text-neutral-500">
+                Sign in and open a project to add project-specific skills.
+              </p>
+            </div>
+          ) : projectSkills.length === 0 && !isFormVisible ? (
+            <p className="text-xs text-neutral-500 py-2">
+              No project skills yet.
+            </p>
+          ) : (
+            <SkillList
+              skills={projectSkills}
+              scope="project"
+              onToggle={toggleProjectSkill}
+              onEdit={(skill) => openEdit(skill, "project")}
+              onDelete={deleteProjectSkill}
+              disabled={isFormVisible}
+            />
+          )}
+        </div>
+      )}
 
       {/* Skill form */}
       {isFormVisible && (

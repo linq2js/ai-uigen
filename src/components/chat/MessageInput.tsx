@@ -6,15 +6,17 @@ import {
   FormEvent,
   KeyboardEvent,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
-import { Send, Paperclip } from "lucide-react";
+import { Send, Paperclip, Square, Settings } from "lucide-react";
 import { ChatRequestOptions } from "ai";
 import { ChatAttachment, MentionItem } from "@/lib/types/attachments";
 import { AttachmentBar } from "./AttachmentBar";
 import { MentionPopup } from "./MentionPopup";
+import { CheckpointDropdown } from "@/components/checkpoints/CheckpointDropdown";
 
 interface MessageInputProps {
   input: string;
@@ -25,11 +27,14 @@ interface MessageInputProps {
     options?: ChatRequestOptions
   ) => void;
   isLoading: boolean;
+  onStop: () => void;
   attachments: ChatAttachment[];
   onAddFiles: (files: FileList | File[]) => void;
   onRemoveAttachment: (id: string) => void;
   onClearAttachments: () => void;
   vaultFiles: string[];
+  onOpenProjectSettings?: () => void;
+  projectId?: string;
 }
 
 export function MessageInput({
@@ -38,15 +43,46 @@ export function MessageInput({
   handleInputChange,
   handleSubmit,
   isLoading,
+  onStop,
   attachments,
   onAddFiles,
   onRemoveAttachment,
   onClearAttachments,
   vaultFiles,
+  onOpenProjectSettings,
+  projectId,
 }: MessageInputProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [mentionOpen, setMentionOpen] = useState(false);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const hasContent = !!(input.trim() || attachments.length > 0);
+
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, []);
+
+  // Listen for Cmd+L code-selection mentions from the editor
+  const inputRef = useRef(input);
+  inputRef.current = input;
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { file, startLine, endLine } = (e as CustomEvent).detail;
+      const range =
+        startLine === endLine ? `${startLine}` : `${startLine}-${endLine}`;
+      const mention = `@${file}:${range} `;
+
+      const prev = inputRef.current;
+      const needsSpace = prev.length > 0 && !prev.endsWith(" ");
+      setInput(prev + (needsSpace ? " " : "") + mention);
+
+      setTimeout(() => textareaRef.current?.focus(), 0);
+    };
+
+    window.addEventListener("mention-code-selection", handler);
+    return () => window.removeEventListener("mention-code-selection", handler);
+  }, [setInput]);
   const [mentionQuery, setMentionQuery] = useState("");
 
   const mentionItems = useMemo<MentionItem[]>(() => {
@@ -81,6 +117,11 @@ export function MessageInput({
 
     return items;
   }, [vaultFiles, attachments, mentionQuery]);
+
+  // Reset highlight when the filtered list changes
+  useEffect(() => {
+    setMentionIndex(0);
+  }, [mentionItems.length, mentionQuery]);
 
   const detectMention = useCallback(
     (value: string, cursorPos: number) => {
@@ -138,19 +179,26 @@ export function MessageInput({
   );
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (mentionOpen) {
+    if (mentionOpen && mentionItems.length > 0) {
       if (e.key === "Escape") {
         e.preventDefault();
         setMentionOpen(false);
         setMentionQuery("");
         return;
       }
-      // Let cmdk handle arrow keys and Enter when mention popup is open
-      if (
-        e.key === "ArrowUp" ||
-        e.key === "ArrowDown" ||
-        e.key === "Enter"
-      ) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setMentionIndex((i) => (i + 1) % mentionItems.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setMentionIndex((i) => (i - 1 + mentionItems.length) % mentionItems.length);
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        handleMentionSelect(mentionItems[mentionIndex]);
         return;
       }
     }
@@ -231,8 +279,8 @@ export function MessageInput({
 
         {mentionOpen && mentionItems.length > 0 && (
           <MentionPopup
-            query={mentionQuery}
             items={mentionItems}
+            selectedIndex={mentionIndex}
             onSelect={handleMentionSelect}
             onClose={() => {
               setMentionOpen(false);
@@ -249,35 +297,51 @@ export function MessageInput({
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             placeholder="Describe the app or component you want to create..."
-            disabled={isLoading}
             className="w-full min-h-[60px] max-h-[200px] pl-4 pr-24 py-2.5 rounded-xl border border-neutral-700 bg-neutral-800 text-neutral-100 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all placeholder:text-neutral-500 text-[15px] font-normal"
             rows={3}
           />
           <div className="absolute right-3 bottom-3 flex items-center gap-1">
+            {onOpenProjectSettings && (
+              <button
+                type="button"
+                onClick={onOpenProjectSettings}
+                className="p-2.5 rounded-lg transition-all hover:bg-neutral-700"
+                aria-label="Project settings"
+              >
+                <Settings className="h-4 w-4 text-neutral-500 hover:text-neutral-300" />
+              </button>
+            )}
+            {projectId && <CheckpointDropdown projectId={projectId} />}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              disabled={isLoading}
-              className="p-2.5 rounded-lg transition-all hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="p-2.5 rounded-lg transition-all hover:bg-neutral-700"
               aria-label="Attach file"
             >
               <Paperclip className="h-4 w-4 text-neutral-500 hover:text-neutral-300" />
             </button>
-            <button
-              type="submit"
-              disabled={
-                isLoading || (!input.trim() && attachments.length === 0)
-              }
-              className="p-2.5 rounded-lg transition-all hover:bg-blue-500/15 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent group"
-            >
-              <Send
-                className={`h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 ${
-                  isLoading || (!input.trim() && attachments.length === 0)
-                    ? "text-neutral-600"
-                    : "text-blue-400"
-                }`}
-              />
-            </button>
+            {!hasContent && isLoading ? (
+              <button
+                type="button"
+                onClick={onStop}
+                className="p-2.5 rounded-lg transition-all hover:bg-red-500/15 group"
+                aria-label="Cancel generation"
+              >
+                <Square className="h-4 w-4 text-red-400 fill-red-400 group-hover:text-red-300 group-hover:fill-red-300" />
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={!hasContent}
+                className="p-2.5 rounded-lg transition-all hover:bg-blue-500/15 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent group"
+              >
+                <Send
+                  className={`h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 ${
+                    !hasContent ? "text-neutral-600" : "text-blue-400"
+                  }`}
+                />
+              </button>
+            )}
           </div>
         </div>
 

@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { Message } from "ai";
 import { Virtuoso } from "react-virtuoso";
 import { cn } from "@/lib/utils";
 import {
-  User,
   Bot,
+  Clock,
   Loader2,
   FileCode,
   Pencil,
@@ -16,8 +16,12 @@ import {
   FilePlus,
   Undo2,
   FileText,
+  X,
+  GitBranch,
 } from "lucide-react";
+import type { QueuedMessage } from "@/lib/types/queue";
 import { MarkdownRenderer } from "./MarkdownRenderer";
+import { AttachmentPreview } from "./AttachmentPreview";
 import { useFileSystem } from "@/lib/contexts/file-system-context";
 
 function getToolDisplay(tool: {
@@ -111,28 +115,25 @@ const MessageRow = React.memo(function MessageRow({
   isLoading,
   isLast,
   onFileClick,
+  onCloneFromMessage,
 }: {
   message: Message;
   isLoading: boolean;
   isLast: boolean;
   onFileClick: (path: string) => void;
+  onCloneFromMessage?: () => void;
 }) {
   return (
     <div
       className={cn(
-        "flex gap-3",
+        "group/msg relative flex gap-3",
         message.role === "user" ? "justify-end" : "justify-start"
       )}
     >
-      {message.role === "assistant" && (
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center">
-          <Bot className="h-3.5 w-3.5 text-neutral-300" />
-        </div>
-      )}
-
       <div
         className={cn(
-          "flex flex-col gap-2 max-w-[85%]",
+          "flex flex-col gap-1",
+          message.role === "user" ? "max-w-[85%]" : "w-full",
           message.role === "user" ? "items-end" : "items-start"
         )}
       >
@@ -140,26 +141,12 @@ const MessageRow = React.memo(function MessageRow({
           message.experimental_attachments &&
           message.experimental_attachments.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-2">
-              {message.experimental_attachments.map((attachment, i) =>
-                attachment.contentType?.startsWith("image/") ? (
-                  <img
-                    key={i}
-                    src={attachment.url}
-                    alt={attachment.name || `Attachment ${i + 1}`}
-                    className="max-w-[200px] max-h-[160px] rounded-lg border border-white/20 object-cover"
-                  />
-                ) : (
-                  <div
-                    key={i}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/30 text-white text-xs"
-                  >
-                    <FileText className="h-3.5 w-3.5" />
-                    <span className="max-w-[140px] truncate">
-                      {attachment.name || `File ${i + 1}`}
-                    </span>
-                  </div>
-                )
-              )}
+              {message.experimental_attachments.map((attachment, i) => (
+                <AttachmentPreview
+                  key={i}
+                  attachment={attachment}
+                />
+              ))}
             </div>
           )}
         <div
@@ -173,7 +160,14 @@ const MessageRow = React.memo(function MessageRow({
           <div className="text-sm">
             {message.parts ? (
               <>
-                {message.parts.map((part, partIndex) => {
+                {message.parts.map((part, partIndex, parts) => {
+                  let afterTool = false;
+                  for (let i = partIndex - 1; i >= 0; i--) {
+                    if (parts[i].type === "step-start") continue;
+                    afterTool = parts[i].type === "tool-invocation";
+                    break;
+                  }
+
                   switch (part.type) {
                     case "text":
                       return message.role === "user" ? (
@@ -184,7 +178,7 @@ const MessageRow = React.memo(function MessageRow({
                         <MarkdownRenderer
                           key={partIndex}
                           content={part.text}
-                          className="prose-sm"
+                          className={cn("prose-sm", afterTool && "mt-3")}
                         />
                       );
                     case "reasoning":
@@ -242,12 +236,7 @@ const MessageRow = React.memo(function MessageRow({
                         </div>
                       );
                     case "step-start":
-                      return partIndex > 0 ? (
-                        <hr
-                          key={partIndex}
-                          className="my-2 border-neutral-700/40"
-                        />
-                      ) : null;
+                      return null;
                     default:
                       return null;
                   }
@@ -276,13 +265,70 @@ const MessageRow = React.memo(function MessageRow({
             ) : null}
           </div>
         </div>
+        {onCloneFromMessage && (
+          <button
+            onClick={onCloneFromMessage}
+            className="opacity-0 group-hover/msg:opacity-100 transition-opacity flex items-center gap-1 px-1.5 py-0.5 rounded-md text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700/60 text-xs"
+            title="Clone from here"
+            aria-label="Clone from here"
+          >
+            <GitBranch className="h-3 w-3" />
+            <span>Clone from here</span>
+          </button>
+        )}
       </div>
+    </div>
+  );
+});
 
-      {message.role === "user" && (
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
-          <User className="h-3.5 w-3.5 text-white" />
+const QueuedMessageRow = React.memo(function QueuedMessageRow({
+  item,
+  onCancel,
+}: {
+  item: QueuedMessage;
+  onCancel: (id: string) => void;
+}) {
+  return (
+    <div className="flex gap-3 justify-end">
+      <div className="flex flex-col gap-2 max-w-[85%] items-end">
+        {item.attachments && item.attachments.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-2">
+            {item.attachments.map((att, i) =>
+              att.contentType?.startsWith("image/") ? (
+                <img
+                  key={i}
+                  src={att.url}
+                  alt={att.name || `Attachment ${i + 1}`}
+                  className="max-w-[200px] max-h-[160px] rounded-lg border border-white/10 object-cover opacity-50"
+                />
+              ) : (
+                <div
+                  key={i}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/20 text-white/50 text-xs"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  <span className="max-w-[140px] truncate">
+                    {att.name || `File ${i + 1}`}
+                  </span>
+                </div>
+              )
+            )}
+          </div>
+        )}
+        <div className="rounded-xl px-3 py-1.5 bg-blue-600/50 text-white/70 border border-blue-500/30 flex items-center gap-2">
+          <Clock className="h-3.5 w-3.5 animate-pulse flex-shrink-0" />
+          <span className="text-sm whitespace-pre-wrap">{item.content}</span>
+          <button
+            type="button"
+            onClick={() => onCancel(item.id)}
+            className="ml-1 p-0.5 rounded hover:bg-white/10 transition-colors flex-shrink-0"
+            aria-label="Cancel queued message"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
         </div>
-      )}
+        <span className="text-[10px] text-neutral-500">Queued</span>
+      </div>
     </div>
   );
 });
@@ -291,12 +337,24 @@ interface MessageListProps {
   messages: Message[];
   isLoading?: boolean;
   onSwitchToCode?: () => void;
+  bottomPadding?: number;
+  queue?: QueuedMessage[];
+  onCancelQueued?: (id: string) => void;
+  onCloneFromMessage?: (messageIndex: number) => void;
 }
+
+type DisplayItem =
+  | { type: "message"; message: Message }
+  | { type: "queued"; item: QueuedMessage };
 
 export function MessageList({
   messages,
   isLoading,
   onSwitchToCode,
+  bottomPadding = 180,
+  queue = [],
+  onCancelQueued,
+  onCloneFromMessage,
 }: MessageListProps) {
   const { setSelectedFile } = useFileSystem();
 
@@ -308,17 +366,25 @@ export function MessageList({
     [setSelectedFile, onSwitchToCode]
   );
 
-  if (messages.length === 0) {
+  const displayItems = useMemo<DisplayItem[]>(() => {
+    const items: DisplayItem[] = messages.map((m) => ({ type: "message", message: m }));
+    for (const q of queue) {
+      items.push({ type: "queued", item: q });
+    }
+    return items;
+  }, [messages, queue]);
+
+  if (messages.length === 0 && queue.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full px-4 text-center">
         <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-blue-500/15 mb-4">
           <Bot className="h-6 w-6 text-blue-400" />
         </div>
         <p className="text-neutral-100 font-semibold text-lg mb-2">
-          Start a conversation to generate React components
+          Start a conversation to generate anything
         </p>
         <p className="text-neutral-400 text-sm max-w-sm">
-          I can help you create buttons, forms, cards, and more
+          From simple components to full apps — just describe what you need
         </p>
       </div>
     );
@@ -326,19 +392,30 @@ export function MessageList({
 
   return (
     <Virtuoso
-      data={messages}
-      initialTopMostItemIndex={messages.length - 1}
+      data={displayItems}
+      initialTopMostItemIndex={displayItems.length - 1}
       followOutput="smooth"
       className="h-full"
-      itemContent={(index, message) => (
+      components={{
+        Footer: () => <div style={{ height: bottomPadding }} />,
+      }}
+      itemContent={(index, item) => (
         <div className="px-3 py-2">
           <div className="max-w-4xl mx-auto">
-            <MessageRow
-              message={message}
-              isLoading={!!isLoading}
-              isLast={index === messages.length - 1}
-              onFileClick={handleFileClick}
-            />
+            {item.type === "message" ? (
+              <MessageRow
+                message={item.message}
+                isLoading={!!isLoading}
+                isLast={index === messages.length - 1 && queue.length === 0}
+                onFileClick={handleFileClick}
+                onCloneFromMessage={onCloneFromMessage ? () => onCloneFromMessage(index) : undefined}
+              />
+            ) : (
+              <QueuedMessageRow
+                item={item.item}
+                onCancel={onCancelQueued ?? (() => {})}
+              />
+            )}
           </div>
         </div>
       )}

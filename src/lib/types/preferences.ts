@@ -1,10 +1,12 @@
 export type CSSFramework =
+  | "Auto"
   | "Tailwind CSS"
   | "CSS Modules"
   | "Styled Components"
   | "Vanilla CSS";
 
 export type DesignStyle =
+  | "Auto"
   | "Premium/Modern"
   | "Minimal/Clean"
   | "Glassmorphism"
@@ -12,6 +14,7 @@ export type DesignStyle =
   | "Brutalist";
 
 export type ArchitectureStyle =
+  | "Auto"
   | "Flat"
   | "Clean Architecture"
   | "Atomic Design"
@@ -25,6 +28,7 @@ export type StateManagement =
   | "React Context";
 
 export type CodeQualityLanguage =
+  | "Auto"
   | "JavaScript"
   | "TypeScript"
   | "TypeScript Strict";
@@ -44,10 +48,10 @@ export interface GenerationPreferences {
 
 export const DEFAULT_PREFERENCES: GenerationPreferences = {
   cssFramework: "Tailwind CSS",
-  designStyle: "Premium/Modern",
-  architectureStyle: "Flat",
+  designStyle: "Auto",
+  architectureStyle: "Auto",
   stateManagement: "Auto",
-  codeQuality: "JavaScript",
+  codeQuality: "Auto",
   aiModel: "Haiku 4.5",
   accessibility: false,
   maxSteps: 40,
@@ -66,12 +70,13 @@ export const PREFERENCE_CATEGORIES: PreferenceCategory[] = [
   {
     key: "cssFramework",
     label: "CSS",
-    options: ["Tailwind CSS", "CSS Modules", "Styled Components", "Vanilla CSS"],
+    options: ["Auto", "Tailwind CSS", "CSS Modules", "Styled Components", "Vanilla CSS"],
   },
   {
     key: "designStyle",
     label: "Design",
     options: [
+      "Auto",
       "Premium/Modern",
       "Minimal/Clean",
       "Glassmorphism",
@@ -82,7 +87,7 @@ export const PREFERENCE_CATEGORIES: PreferenceCategory[] = [
   {
     key: "architectureStyle",
     label: "Architecture",
-    options: ["Flat", "Clean Architecture", "Atomic Design", "Feature-Based"],
+    options: ["Auto", "Flat", "Clean Architecture", "Atomic Design", "Feature-Based"],
   },
   {
     key: "stateManagement",
@@ -98,7 +103,7 @@ export const PREFERENCE_CATEGORIES: PreferenceCategory[] = [
   {
     key: "codeQuality",
     label: "Code",
-    options: ["JavaScript", "TypeScript", "TypeScript Strict"],
+    options: ["Auto", "JavaScript", "TypeScript", "TypeScript Strict"],
   },
   {
     key: "aiModel",

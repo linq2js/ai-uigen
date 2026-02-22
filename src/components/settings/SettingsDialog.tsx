@@ -16,18 +16,15 @@ import { SkillEditor } from "./SkillEditor";
 interface SettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  projectId?: string;
 }
 
-export function SettingsDialog({ open, onOpenChange, projectId }: SettingsDialogProps) {
+export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const {
     apiKey,
     setApiKey,
     clearApiKey,
     globalRules,
     setGlobalRules,
-    projectRules,
-    setProjectRules,
   } = useChat();
 
   const [keyInput, setKeyInput] = useState("");
@@ -36,17 +33,12 @@ export function SettingsDialog({ open, onOpenChange, projectId }: SettingsDialog
   const [globalRulesInput, setGlobalRulesInput] = useState("");
   const [globalRulesSaved, setGlobalRulesSaved] = useState(false);
 
-  const [projectRulesInput, setProjectRulesInput] = useState("");
-  const [projectRulesSaved, setProjectRulesSaved] = useState(false);
-
   const handleOpen = (isOpen: boolean) => {
     if (isOpen) {
       setKeyInput(apiKey);
       setKeySaved(false);
       setGlobalRulesInput(globalRules);
       setGlobalRulesSaved(false);
-      setProjectRulesInput(projectRules);
-      setProjectRulesSaved(false);
     }
     onOpenChange(isOpen);
   };
@@ -69,27 +61,21 @@ export function SettingsDialog({ open, onOpenChange, projectId }: SettingsDialog
     setTimeout(() => setGlobalRulesSaved(false), 2000);
   };
 
-  const handleSaveProjectRules = async () => {
-    await setProjectRules(projectRulesInput);
-    setProjectRulesSaved(true);
-    setTimeout(() => setProjectRulesSaved(false), 2000);
-  };
-
   return (
     <Dialog open={open} onOpenChange={handleOpen}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
-            Configure API key, rules, and skills.
+            Configure API key, global rules, and global skills.
           </DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="api-key" className="mt-2">
           <TabsList className="w-full">
             <TabsTrigger value="api-key">API Key</TabsTrigger>
-            <TabsTrigger value="rules">Rules</TabsTrigger>
-            <TabsTrigger value="skills">Skills</TabsTrigger>
+            <TabsTrigger value="rules">Global Rules</TabsTrigger>
+            <TabsTrigger value="skills">Global Skills</TabsTrigger>
           </TabsList>
 
           <TabsContent value="api-key" className="mt-4 space-y-4">
@@ -141,88 +127,40 @@ export function SettingsDialog({ open, onOpenChange, projectId }: SettingsDialog
             </div>
           </TabsContent>
 
-          <TabsContent value="rules" className="mt-4 space-y-6">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-neutral-200">
-                  Global Rules
-                </label>
-                <span className="text-xs text-neutral-500">
-                  {globalRulesInput.length} chars
-                </span>
-              </div>
-              <textarea
-                value={globalRulesInput}
-                onChange={(e) => {
-                  setGlobalRulesInput(e.target.value);
-                  setGlobalRulesSaved(false);
-                }}
-                placeholder={"Apply to all projects. Examples:\n- Always use arrow functions\n- Prefer dark color schemes\n- Add comments to complex logic"}
-                rows={6}
-                className="w-full px-3 py-2 text-sm bg-neutral-800 border border-neutral-700 rounded-md text-neutral-100 placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-500 resize-none font-mono"
-              />
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-neutral-500">
-                  Injected into every prompt across all projects.
-                </p>
-                <Button
-                  onClick={handleSaveGlobalRules}
-                  className="h-7 text-xs"
-                >
-                  {globalRulesSaved ? "Saved!" : "Save"}
-                </Button>
-              </div>
+          <TabsContent value="rules" className="mt-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-neutral-200">
+                Global Rules
+              </label>
+              <span className="text-xs text-neutral-500">
+                {globalRulesInput.length} chars
+              </span>
             </div>
-
-            <div className="border-t border-neutral-800" />
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-neutral-200">
-                  Project Rules
-                </label>
-                {projectId && (
-                  <span className="text-xs text-neutral-500">
-                    {projectRulesInput.length} chars
-                  </span>
-                )}
-              </div>
-              {projectId ? (
-                <>
-                  <textarea
-                    value={projectRulesInput}
-                    onChange={(e) => {
-                      setProjectRulesInput(e.target.value);
-                      setProjectRulesSaved(false);
-                    }}
-                    placeholder={"Apply to this project only. Examples:\n- This is a dashboard app, use chart.js\n- Use a purple/teal color palette\n- All buttons should have rounded-full"}
-                    rows={6}
-                    className="w-full px-3 py-2 text-sm bg-neutral-800 border border-neutral-700 rounded-md text-neutral-100 placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-500 resize-none font-mono"
-                  />
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-neutral-500">
-                      Override global rules when they conflict. Stored per project.
-                    </p>
-                    <Button
-                      onClick={handleSaveProjectRules}
-                      className="h-7 text-xs"
-                    >
-                      {projectRulesSaved ? "Saved!" : "Save"}
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <div className="rounded-md border border-neutral-800 bg-neutral-900 px-4 py-6 text-center">
-                  <p className="text-sm text-neutral-500">
-                    Sign in and open a project to set project-specific rules.
-                  </p>
-                </div>
-              )}
+            <textarea
+              value={globalRulesInput}
+              onChange={(e) => {
+                setGlobalRulesInput(e.target.value);
+                setGlobalRulesSaved(false);
+              }}
+              placeholder={"Apply to all projects. Examples:\n- Always use arrow functions\n- Prefer dark color schemes\n- Add comments to complex logic"}
+              rows={8}
+              className="w-full px-3 py-2 text-sm bg-neutral-800 border border-neutral-700 rounded-md text-neutral-100 placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-500 resize-none font-mono"
+            />
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-neutral-500">
+                Injected into every prompt across all projects.
+              </p>
+              <Button
+                onClick={handleSaveGlobalRules}
+                className="h-7 text-xs"
+              >
+                {globalRulesSaved ? "Saved!" : "Save"}
+              </Button>
             </div>
           </TabsContent>
 
           <TabsContent value="skills" className="mt-4">
-            <SkillEditor projectId={projectId} />
+            <SkillEditor scope="global" />
           </TabsContent>
         </Tabs>
       </DialogContent>

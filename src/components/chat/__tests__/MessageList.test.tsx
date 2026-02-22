@@ -16,10 +16,10 @@ test("MessageList shows empty state when no messages", () => {
   render(<MessageList messages={[]} />);
 
   expect(
-    screen.getByText("Start a conversation to generate React components")
+    screen.getByText("Start a conversation to generate anything")
   ).toBeDefined();
   expect(
-    screen.getByText("I can help you create buttons, forms, cards, and more")
+    screen.getByText("From simple components to full apps — just describe what you need")
   ).toBeDefined();
 });
 

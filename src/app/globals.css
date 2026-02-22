@@ -87,3 +87,22 @@
     @apply bg-background text-foreground;
   }
 }
+
+.mobile-warning {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .mobile-warning {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    background: var(--background);
+  }
+  .app-content {
+    display: none;
+  }
+}

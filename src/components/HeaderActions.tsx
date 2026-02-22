@@ -194,7 +194,7 @@ export function HeaderActions({ user, projectId, published: initialPublished }: 
           onOpenChange={setAuthDialogOpen}
           defaultMode={authMode}
         />
-        <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} projectId={projectId} />
+        <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
       </>
     );
   }
@@ -284,7 +284,7 @@ export function HeaderActions({ user, projectId, published: initialPublished }: 
         {signingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
       </Button>
 
-      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} projectId={projectId} />
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   );
 }

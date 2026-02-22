@@ -137,7 +137,7 @@ export function StudioView({ project }: StudioViewProps) {
       <div className="flex-1 overflow-hidden">
         {mode === "code" ? (
           <MainContent
-            project={{ ...project, published: true }}
+            project={{ ...project, published: true, messageCount: 0, totalInputTokens: 0, totalOutputTokens: 0, dataSize: 0 }}
             readOnly
           />
         ) : previewHTML ? (
