@@ -1,16 +1,20 @@
 import { getUser } from "@/actions";
 import { getProjects } from "@/actions/get-projects";
 import { createProject } from "@/actions/create-project";
-import { MainContent } from "./main-content";
 import { redirect } from "next/navigation";
+import { GuestProjectLoader } from "./guest-project-loader";
 
-export default async function Home() {
+interface HomeProps {
+  searchParams: Promise<{ project?: string }>;
+}
+
+export default async function Home({ searchParams }: HomeProps) {
   const user = await getUser();
 
   // If user is authenticated, redirect to their most recent project
   if (user) {
     const projects = await getProjects();
-    
+
     if (projects.length > 0) {
       redirect(`/${projects[0].id}`);
     }
@@ -25,6 +29,9 @@ export default async function Home() {
     redirect(`/${newProject.id}`);
   }
 
-  // For anonymous users, show the main content without a project
-  return <MainContent user={user} />;
+  // For anonymous users, delegate to the client-side guest loader
+  const params = await searchParams;
+  const localProjectId = params.project?.startsWith("local_") ? params.project : undefined;
+
+  return <GuestProjectLoader localProjectId={localProjectId} />;
 }

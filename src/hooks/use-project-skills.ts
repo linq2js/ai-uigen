@@ -3,14 +3,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import type { Skill } from "@/lib/types/skill";
-import { getProjectSkills } from "@/actions/get-project-skills";
-import { saveProjectSkills } from "@/actions/save-project-skills";
+import { useProjectStore } from "@/lib/project-store/context";
 
 function generateId() {
   return `sk_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
 export function useProjectSkills(projectId?: string) {
+  const store = useProjectStore();
   const [skills, setSkills] = useState<Skill[]>([]);
 
   useEffect(() => {
@@ -18,19 +18,19 @@ export function useProjectSkills(projectId?: string) {
       setSkills([]);
       return;
     }
-    getProjectSkills(projectId)
+    store.getProjectSkills(projectId)
       .then(setSkills)
       .catch(() => setSkills([]));
-  }, [projectId]);
+  }, [projectId, store]);
 
   const persist = useCallback(
     (next: Skill[]) => {
       if (!projectId) return;
-      saveProjectSkills(projectId, next).catch(() =>
+      store.saveProjectSkills(projectId, next).catch(() =>
         toast.error("Failed to save skills")
       );
     },
-    [projectId],
+    [projectId, store],
   );
 
   const addSkill = useCallback(

@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { getProjectRules } from "@/actions/get-project-rules";
-import { saveProjectRules } from "@/actions/save-project-rules";
+import { useProjectStore } from "@/lib/project-store/context";
 
 export function useProjectRules(projectId?: string) {
+  const store = useProjectStore();
   const [projectRules, setProjectRulesState] = useState("");
 
   useEffect(() => {
@@ -13,22 +13,22 @@ export function useProjectRules(projectId?: string) {
       setProjectRulesState("");
       return;
     }
-    getProjectRules(projectId)
+    store.getProjectRules(projectId)
       .then(setProjectRulesState)
       .catch(() => setProjectRulesState(""));
-  }, [projectId]);
+  }, [projectId, store]);
 
   const setProjectRules = useCallback(
     async (rules: string) => {
       if (!projectId) return;
       setProjectRulesState(rules);
       try {
-        await saveProjectRules(projectId, rules);
+        await store.saveProjectRules(projectId, rules);
       } catch {
         toast.error("Failed to save project rules");
       }
     },
-    [projectId],
+    [projectId, store],
   );
 
   return { projectRules, setProjectRules };

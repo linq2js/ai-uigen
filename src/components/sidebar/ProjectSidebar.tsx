@@ -23,11 +23,7 @@ import {
 } from "@/components/ui/popover";
 import { DeleteProjectDialog } from "./DeleteProjectDialog";
 import { CloneProjectDialog } from "./CloneProjectDialog";
-import { getProjects } from "@/actions/get-projects";
-import { createProject } from "@/actions/create-project";
-import { renameProject } from "@/actions/rename-project";
-import { deleteProject } from "@/actions/delete-project";
-import { cloneProject } from "@/actions/clone-project";
+import { useProjectStore } from "@/lib/project-store/context";
 import { subscribe, isProjectGenerating } from "@/lib/generation-tracker";
 
 interface Project {
@@ -97,6 +93,7 @@ export function ProjectSidebar({
   onNavigating,
 }: ProjectSidebarProps) {
   const router = useRouter();
+  const store = useProjectStore();
   const [projects, setProjects] = useState<Project[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -118,14 +115,14 @@ export function ProjectSidebar({
 
   const loadProjects = useCallback(async () => {
     try {
-      const p = await getProjects();
+      const p = await store.getProjects();
       setProjects(p);
     } catch {
       toast.error("Failed to load projects");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [store]);
 
   useEffect(() => {
     loadProjects();
@@ -151,17 +148,28 @@ export function ProjectSidebar({
     }));
   }, [filteredProjects]);
 
+  const navigateToProject = useCallback(
+    (projectId: string) => {
+      if (store.isLocal) {
+        router.push(`/?project=${projectId}`);
+      } else {
+        router.push(`/${projectId}`);
+      }
+    },
+    [store.isLocal, router]
+  );
+
   const handleNewProject = async () => {
     setCreating(true);
     if (currentProjectId) onNavigating?.(true);
     try {
-      const project = await createProject({
+      const project = await store.createProject({
         name: `Project #${~~(Math.random() * 100000)}`,
         messages: [],
         data: {},
       });
       await loadProjects();
-      router.push(`/${project.id}`);
+      navigateToProject(project.id);
     } catch {
       onNavigating?.(false);
       setCreating(false);
@@ -183,7 +191,7 @@ export function ProjectSidebar({
     }
     setIsRenaming(true);
     try {
-      const newName = await renameProject(renamingId, trimmed);
+      const newName = await store.renameProject(renamingId, trimmed);
       setProjects((prev) =>
         prev.map((p) => (p.id === renamingId ? { ...p, name: newName } : p))
       );
@@ -203,21 +211,27 @@ export function ProjectSidebar({
     if (!deleteTarget) return;
     setIsDeleting(true);
     try {
-      await deleteProject(deleteTarget.id);
+      await store.deleteProject(deleteTarget.id);
       const remaining = projects.filter((p) => p.id !== deleteTarget.id);
       setProjects(remaining);
 
       if (deleteTarget.id === currentProjectId) {
         onNavigating?.(true);
-        if (remaining.length > 0) {
-          router.push(`/${remaining[0].id}`);
-        } else {
-          const newProject = await createProject({
-            name: `Project #${~~(Math.random() * 100000)}`,
-            messages: [],
-            data: {},
-          });
-          router.push(`/${newProject.id}`);
+        try {
+          if (remaining.length > 0) {
+            navigateToProject(remaining[0].id);
+          } else {
+            const newProject = await store.createProject({
+              name: `Project #${~~(Math.random() * 100000)}`,
+              messages: [],
+              data: {},
+            });
+            await loadProjects();
+            navigateToProject(newProject.id);
+          }
+        } catch {
+          onNavigating?.(false);
+          toast.error("Failed to create replacement project");
         }
       }
     } catch {
@@ -239,13 +253,13 @@ export function ProjectSidebar({
     if (!cloneTarget) return;
     setIsCloning(true);
     try {
-      const newProject = await cloneProject({
+      const newProject = await store.cloneProject({
         sourceProjectId: cloneTarget.id,
         ...options,
       });
       await loadProjects();
       onNavigating?.(true);
-      router.push(`/${newProject.id}`);
+      navigateToProject(newProject.id);
     } catch {
       toast.error("Failed to clone project");
     } finally {
@@ -354,7 +368,7 @@ export function ProjectSidebar({
                         onClick={() => {
                           if (isBeingRenamed || isActive) return;
                           onNavigating?.(true);
-                          router.push(`/${project.id}`);
+                          navigateToProject(project.id);
                         }}
                       >
                         {isActive && (

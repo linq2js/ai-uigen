@@ -66,6 +66,7 @@ export function MessageInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [mentionOpen, setMentionOpen] = useState(false);
+  const [modelMenuOpen, setModelMenuOpen] = useState(false);
   const [mentionIndex, setMentionIndex] = useState(0);
   const hasContent = !!(input.trim() || attachments.length > 0);
 
@@ -300,7 +301,7 @@ export function MessageInput({
           />
         )}
 
-        <div className="relative">
+        <div className="rounded-xl border border-neutral-700 bg-neutral-800 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500/50 transition-all">
           <textarea
             ref={textareaRef}
             value={input}
@@ -308,11 +309,11 @@ export function MessageInput({
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             placeholder="Describe the app or component you want to create..."
-            className="w-full min-h-[60px] max-h-[200px] px-4 py-2.5 pb-10 rounded-xl border border-neutral-700 bg-neutral-800 text-neutral-100 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all placeholder:text-neutral-500 text-[15px] font-normal"
+            className="w-full min-h-[60px] max-h-[200px] px-4 py-2.5 bg-transparent text-neutral-100 resize-none focus:outline-none placeholder:text-neutral-500 text-[15px] font-normal"
             rows={3}
           />
-          <div className="absolute left-3 right-3 bottom-2 flex items-center justify-between">
-            <Popover>
+          <div className="px-3 pb-2 flex items-center justify-between">
+            <Popover open={modelMenuOpen} onOpenChange={setModelMenuOpen}>
               <PopoverTrigger asChild>
                 <button
                   type="button"
@@ -333,7 +334,7 @@ export function MessageInput({
                   <button
                     key={option}
                     type="button"
-                    onClick={() => onModelChange(option)}
+                    onClick={() => { onModelChange(option); setModelMenuOpen(false); }}
                     className={cn(
                       "flex items-center w-full gap-2 px-3 py-1.5 text-sm rounded-md transition-colors cursor-pointer",
                       option === aiModel

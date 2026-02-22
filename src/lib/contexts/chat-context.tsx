@@ -13,7 +13,7 @@ import {
 import { useChat as useAIChat } from "@ai-sdk/react";
 import { Message, ChatRequestOptions } from "ai";
 import { useFileSystem } from "./file-system-context";
-import { setHasAnonWork } from "@/lib/anon-work-tracker";
+import { useProjectStore } from "@/lib/project-store/context";
 import { usePreferences } from "@/hooks/use-preferences";
 import { useApiKey } from "@/hooks/use-api-key";
 import { useGlobalRules } from "@/hooks/use-global-rules";
@@ -88,7 +88,7 @@ export function ChatProvider({
   projectId,
   initialMessages = [],
 }: ChatContextProps & { children: ReactNode }) {
-  const { fileSystem, handleToolCall } = useFileSystem();
+  const { fileSystem, handleToolCall, selectedFile, editorVisibleRange, previewErrors } = useFileSystem();
   useAutoSave(projectId);
   const { preferences, setPreference, resetPreferences, isDefault } = usePreferences();
   const { apiKey, setApiKey, clearApiKey } = useApiKey();
@@ -140,6 +140,11 @@ export function ChatProvider({
       globalRules: globalRules || undefined,
       projectRules: projectRules || undefined,
       skills: allEnabledSkills.length > 0 ? allEnabledSkills : undefined,
+      editorContext: {
+        selectedFile,
+        visibleRange: editorVisibleRange,
+      },
+      previewErrors: previewErrors.length > 0 ? previewErrors : undefined,
     },
     onToolCall: ({ toolCall }) => {
       handleToolCall(toolCall);
@@ -287,12 +292,16 @@ export function ChatProvider({
     }, 0);
   }, [status, queue, continuationNeeded, append]);
 
-  // Track anonymous work
+  // Persist messages to IndexedDB for local/guest users
+  const store = useProjectStore();
   useEffect(() => {
-    if (!projectId && messages.length > 0) {
-      setHasAnonWork(messages, fileSystem.serialize());
-    }
-  }, [messages, fileSystem, projectId]);
+    if (!projectId || !store.isLocal) return;
+    if (messages.length === 0) return;
+    const timer = setTimeout(() => {
+      store.saveMessages(projectId, messages, 0, 0).catch(console.error);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [messages, projectId, store]);
 
   return (
     <ChatContext.Provider

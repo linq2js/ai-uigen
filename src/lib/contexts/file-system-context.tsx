@@ -14,10 +14,19 @@ interface ToolCall {
   args: any;
 }
 
+interface EditorVisibleRange {
+  startLine: number;
+  endLine: number;
+}
+
 interface FileSystemContextType {
   fileSystem: VirtualFileSystem;
   selectedFile: string | null;
   setSelectedFile: (path: string | null) => void;
+  editorVisibleRange: EditorVisibleRange | null;
+  setEditorVisibleRange: (range: EditorVisibleRange | null) => void;
+  previewErrors: string[];
+  setPreviewErrors: (errors: string[]) => void;
   createFile: (path: string, content?: string) => void;
   updateFile: (path: string, content: string) => void;
   deleteFile: (path: string) => void;
@@ -50,6 +59,9 @@ export function FileSystemProvider({
     return fs;
   });
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [editorVisibleRange, setEditorVisibleRange] =
+    useState<EditorVisibleRange | null>(null);
+  const [previewErrors, setPreviewErrors] = useState<string[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const triggerRefresh = useCallback(() => {
@@ -217,6 +229,10 @@ export function FileSystemProvider({
         fileSystem,
         selectedFile,
         setSelectedFile,
+        editorVisibleRange,
+        setEditorVisibleRange,
+        previewErrors,
+        setPreviewErrors,
         createFile,
         updateFile,
         deleteFile,

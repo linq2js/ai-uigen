@@ -5,6 +5,9 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   LogOut,
+  LogIn,
+  UserPlus,
+  CircleUserRound,
   Download,
   FileCode,
   Globe,
@@ -18,9 +21,9 @@ import {
 import { AuthDialog } from "@/components/auth/AuthDialog";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { SettingsButton } from "@/components/settings/SettingsButton";
+
 import { signOut } from "@/actions";
-import { getProjects } from "@/actions/get-projects";
-import { togglePublish } from "@/actions/toggle-publish";
+import { useProjectStore } from "@/lib/project-store/context";
 import { useChat } from "@/lib/contexts/chat-context";
 import { useFileSystem } from "@/lib/contexts/file-system-context";
 import { exportAsZip, exportCompiledHtml } from "@/lib/export-zip";
@@ -42,6 +45,7 @@ interface HeaderActionsProps {
 export function HeaderActions({ user, projectId, published: initialPublished }: HeaderActionsProps) {
   const { fileSystem, getAllFiles } = useFileSystem();
   const { apiKey } = useChat();
+  const store = useProjectStore();
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [exporting, setExporting] = useState(false);
@@ -72,8 +76,8 @@ export function HeaderActions({ user, projectId, published: initialPublished }: 
 
   // Load current project name for export safeName
   useEffect(() => {
-    if (user && projectId) {
-      getProjects()
+    if (projectId) {
+      store.getProjects()
         .then((p) => {
           const current = p.find((proj) => proj.id === projectId);
           if (current) {
@@ -83,7 +87,7 @@ export function HeaderActions({ user, projectId, published: initialPublished }: 
         })
         .catch(console.error);
     }
-  }, [user, projectId]);
+  }, [projectId, store]);
 
   const handleSignInClick = () => {
     setAuthMode("signin");
@@ -134,7 +138,7 @@ export function HeaderActions({ user, projectId, published: initialPublished }: 
     if (!projectId) return;
     setPublishing(true);
     try {
-      const newState = await togglePublish(projectId);
+      const newState = await store.togglePublish(projectId);
       setIsPublished(newState);
       if (!newState) setPublishOpen(false);
     } catch {
@@ -203,18 +207,47 @@ export function HeaderActions({ user, projectId, published: initialPublished }: 
     </Popover>
   ) : null;
 
+  const [profileOpen, setProfileOpen] = useState(false);
+
   if (!user) {
     return (
       <>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           {exportDropdown}
           <SettingsButton onClick={() => setSettingsOpen(true)} />
-          <Button variant="outline" className="h-8" onClick={handleSignInClick}>
-            Sign In
-          </Button>
-          <Button className="h-8" onClick={handleSignUpClick}>
-            Sign Up
-          </Button>
+          <Popover open={profileOpen} onOpenChange={setProfileOpen}>
+            <PopoverTrigger asChild>
+              <button
+                className="h-8 w-8 flex items-center justify-center rounded-full border border-neutral-600 text-neutral-400 hover:text-neutral-200 hover:border-neutral-500 transition-colors"
+                title="Account"
+                aria-label="Account menu"
+              >
+                <CircleUserRound className="h-5 w-5" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-44 p-1">
+              <button
+                onClick={() => {
+                  setProfileOpen(false);
+                  handleSignInClick();
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-700/60 rounded-md transition-colors"
+              >
+                <LogIn className="h-4 w-4 text-neutral-400" />
+                Sign In
+              </button>
+              <button
+                onClick={() => {
+                  setProfileOpen(false);
+                  handleSignUpClick();
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-700/60 rounded-md transition-colors"
+              >
+                <UserPlus className="h-4 w-4 text-neutral-400" />
+                Sign Up
+              </button>
+            </PopoverContent>
+          </Popover>
         </div>
         <AuthDialog
           open={authDialogOpen}
@@ -228,7 +261,7 @@ export function HeaderActions({ user, projectId, published: initialPublished }: 
 
   return (
     <div className="flex items-center gap-2">
-      {projectId && hasFiles && (
+      {!store.isLocal && projectId && hasFiles && (
         <Popover open={publishOpen} onOpenChange={setPublishOpen}>
           <PopoverTrigger asChild>
             <Button
@@ -300,16 +333,37 @@ export function HeaderActions({ user, projectId, published: initialPublished }: 
 
       <SettingsButton onClick={() => setSettingsOpen(true)} />
 
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8"
-        onClick={handleSignOut}
-        disabled={signingOut}
-        title="Sign out"
-      >
-        {signingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
-      </Button>
+      <Popover open={profileOpen} onOpenChange={setProfileOpen}>
+        <PopoverTrigger asChild>
+          <button
+            className="h-8 w-8 flex items-center justify-center rounded-full border border-neutral-600 text-neutral-400 hover:text-neutral-200 hover:border-neutral-500 transition-colors"
+            title="Account"
+            aria-label="Account menu"
+          >
+            <CircleUserRound className="h-5 w-5" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-52 p-1">
+          <div className="px-3 py-2 border-b border-neutral-700/50 mb-1">
+            <p className="text-xs text-neutral-500 truncate">{user.email}</p>
+          </div>
+          <button
+            onClick={() => {
+              setProfileOpen(false);
+              handleSignOut();
+            }}
+            disabled={signingOut}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-700/60 rounded-md transition-colors disabled:opacity-50"
+          >
+            {signingOut ? (
+              <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
+            ) : (
+              <LogOut className="h-4 w-4 text-neutral-400" />
+            )}
+            Sign Out
+          </button>
+        </PopoverContent>
+      </Popover>
 
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>

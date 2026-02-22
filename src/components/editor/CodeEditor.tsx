@@ -24,12 +24,14 @@ export function CodeEditor({ readOnly = false }: { readOnly?: boolean }) {
     updateFile,
     fileSystem,
     refreshTrigger,
+    setEditorVisibleRange,
   } = useFileSystem();
 
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<Monaco | null>(null);
   const pendingNav = useRef<PendingNavigation | null>(null);
   const disposablesRef = useRef<any[]>([]);
+  const rafPendingRef = useRef(false);
 
   const exists = useCallback(
     (path: string) => fileSystem.exists(path),
@@ -248,6 +250,23 @@ export function CodeEditor({ readOnly = false }: { readOnly?: boolean }) {
       navigateToDefinition(currentPath, word.word);
     });
 
+    // Report visible line range to context (throttled via rAF)
+    const scrollHandler = editor.onDidScrollChange(() => {
+      if (rafPendingRef.current) return;
+      rafPendingRef.current = true;
+      requestAnimationFrame(() => {
+        rafPendingRef.current = false;
+        if (!editorRef.current) return;
+        const ranges = editorRef.current.getVisibleRanges();
+        if (ranges && ranges.length > 0) {
+          setEditorVisibleRange({
+            startLine: ranges[0].startLineNumber,
+            endLine: ranges[ranges.length - 1].endLineNumber,
+          });
+        }
+      });
+    });
+
     // Cmd+L / Ctrl+L: mention selected code range in chat input
     const mentionAction = editor.addAction({
       id: "mention-code-in-chat",
@@ -275,6 +294,7 @@ export function CodeEditor({ readOnly = false }: { readOnly?: boolean }) {
       defProvider,
       editorOpener,
       mouseHandler,
+      scrollHandler,
       mentionAction,
     ];
   };

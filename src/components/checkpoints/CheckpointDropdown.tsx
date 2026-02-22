@@ -17,10 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { History, RotateCcw, Trash2, Loader2 } from "lucide-react";
-import { createCheckpoint } from "@/actions/create-checkpoint";
-import { getCheckpoints } from "@/actions/get-checkpoints";
-import { deleteCheckpoint } from "@/actions/delete-checkpoint";
-import { restoreCheckpoint } from "@/actions/restore-checkpoint";
+import { useProjectStore } from "@/lib/project-store/context";
 
 interface Checkpoint {
   id: string;
@@ -40,6 +37,7 @@ function timeAgo(date: Date) {
 }
 
 export function CheckpointDropdown({ projectId }: { projectId: string }) {
+  const store = useProjectStore();
   const [open, setOpen] = useState(false);
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
   const [name, setName] = useState(() => new Date().toLocaleString());
@@ -50,7 +48,7 @@ export function CheckpointDropdown({ projectId }: { projectId: string }) {
 
   const load = async () => {
     try {
-      const data = await getCheckpoints(projectId);
+      const data = await store.getCheckpoints(projectId);
       setCheckpoints(data);
     } catch {
       toast.error("Failed to load checkpoints");
@@ -73,7 +71,7 @@ export function CheckpointDropdown({ projectId }: { projectId: string }) {
     setNameError(false);
     setSaving(true);
     try {
-      await createCheckpoint(projectId, name.trim());
+      await store.createCheckpoint(projectId, name.trim());
       setName(new Date().toLocaleString());
       await load();
     } catch {
@@ -85,7 +83,7 @@ export function CheckpointDropdown({ projectId }: { projectId: string }) {
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteCheckpoint(id);
+      await store.deleteCheckpoint(id);
       setCheckpoints((prev) => prev.filter((c) => c.id !== id));
     } catch {
       toast.error("Failed to delete checkpoint");
@@ -96,7 +94,7 @@ export function CheckpointDropdown({ projectId }: { projectId: string }) {
     if (!restoreTarget) return;
     setRestoring(true);
     try {
-      await restoreCheckpoint(restoreTarget.id);
+      await store.restoreCheckpoint(restoreTarget.id);
       setRestoreTarget(null);
       setOpen(false);
       window.location.reload();

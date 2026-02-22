@@ -122,6 +122,8 @@ function messageTokens(msg: any): number {
     for (const block of msg.content) {
       if (block.type === "text") {
         total += estimateTokens(block.text || "");
+      } else if (block.type === "thinking") {
+        total += estimateTokens(block.thinking || "");
       } else if (block.type === "tool-result") {
         total += estimateTokens(
           typeof block.result === "string"
@@ -138,6 +140,8 @@ function messageTokens(msg: any): number {
     for (const part of msg.parts) {
       if (part.type === "text") {
         total += estimateTokens(part.text || "");
+      } else if (part.type === "reasoning") {
+        total += estimateTokens(part.reasoning || "");
       } else if (part.type === "tool-invocation") {
         const inv = part.toolInvocation;
         if (inv?.args) total += estimateTokens(JSON.stringify(inv.args));

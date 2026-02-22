@@ -345,13 +345,13 @@ const MessageRow = React.memo(function MessageRow({
   return (
     <div
       className={cn(
-        "group/msg relative flex gap-3",
+        "group/msg flex gap-3",
         message.role === "user" ? "justify-end" : "justify-start"
       )}
     >
         <div
           className={cn(
-            "flex flex-col gap-1 min-w-0",
+            "relative flex flex-col min-w-0",
             message.role === "user" ? "max-w-[85%]" : "w-full",
             message.role === "user" ? "items-end" : "items-start"
           )}
@@ -466,33 +466,30 @@ const MessageRow = React.memo(function MessageRow({
             ) : null}
           </div>
         </div>
-      </div>
-      <div className={cn(
-        "absolute bottom-0 opacity-0 group-hover/msg:opacity-100 transition-opacity z-10",
-        message.role === "user" ? "right-0" : "left-0"
-      )}>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700/60 text-xs"
-              aria-label="Message actions"
-            >
-              <MoreHorizontal className="h-3.5 w-3.5" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" side="bottom">
-            <DropdownMenuItem onClick={handleCopy}>
-              <Copy />
-              Copy message
-            </DropdownMenuItem>
-            {onCloneFromMessage && (
-              <DropdownMenuItem onClick={onCloneFromMessage}>
-                <GitBranch />
-                Clone from here
+        <div className="absolute bottom-1 right-1 opacity-0 group-hover/msg:opacity-100 transition-opacity z-10">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="h-7 w-7 flex items-center justify-center rounded-full bg-neutral-700 border border-neutral-600 text-neutral-400 hover:text-neutral-100 hover:bg-neutral-600 shadow-lg"
+                aria-label="Message actions"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" side="bottom">
+              <DropdownMenuItem onClick={handleCopy}>
+                <Copy />
+                Copy message
               </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+              {onCloneFromMessage && (
+                <DropdownMenuItem onClick={onCloneFromMessage}>
+                  <GitBranch />
+                  Clone from here
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
     </div>
   );

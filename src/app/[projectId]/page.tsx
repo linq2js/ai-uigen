@@ -1,6 +1,7 @@
 import { getUser } from "@/actions";
 import { getProject } from "@/actions/get-project";
 import { MainContent } from "@/app/main-content";
+import { ProjectStoreProvider } from "@/lib/project-store/context";
 import { redirect } from "next/navigation";
 
 interface PageProps {
@@ -23,5 +24,9 @@ export default async function ProjectPage({ params }: PageProps) {
     redirect("/");
   }
 
-  return <MainContent user={user} project={project} />;
+  return (
+    <ProjectStoreProvider isAuthenticated={true}>
+      <MainContent user={user} project={project} />
+    </ProjectStoreProvider>
+  );
 }

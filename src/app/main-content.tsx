@@ -18,6 +18,7 @@ import { HeaderActions } from "@/components/HeaderActions";
 import { ProjectSidebar } from "@/components/sidebar/ProjectSidebar";
 import { PanelLeft, Loader2, MessageSquare, Zap, HardDrive } from "lucide-react";
 import { JumpToFile } from "@/components/editor/JumpToFile";
+import { LocalModeIndicator } from "@/components/LocalModeIndicator";
 
 const SIDEBAR_KEY = "artifex-sidebar-open";
 
@@ -62,6 +63,12 @@ export function MainContent({ user, project, readOnly = false }: MainContentProp
   const [jumpToFileOpen, setJumpToFileOpen] = useState(false);
   const sidebarPanelRef = useRef<ImperativePanelHandle>(null);
 
+  // Reset navigating overlay when the loaded project changes (e.g. after
+  // delete-and-create in local mode, where the route stays the same).
+  useEffect(() => {
+    setNavigating(false);
+  }, [project?.id]);
+
   useEffect(() => {
     const stored = localStorage.getItem(SIDEBAR_KEY);
     if (stored === "false") {
@@ -80,14 +87,14 @@ export function MainContent({ user, project, readOnly = false }: MainContentProp
     }
   };
 
-  const showSidebar = user && !readOnly;
+  const showSidebar = !readOnly;
 
   return (
     <FileSystemProvider initialData={project?.data}>
       <ChatProvider projectId={project?.id} initialMessages={project?.messages}>
         <div className={`${readOnly ? "h-full w-full" : "h-screen w-screen"} overflow-hidden bg-neutral-900 flex relative`}>
           <div className="flex-1 min-w-0 h-full">
-            <ResizablePanelGroup direction="horizontal" className="h-full">
+            <ResizablePanelGroup direction="horizontal" autoSaveId="artifex-main-layout" className="h-full">
               {!readOnly && (
                 <>
                   <ResizablePanel defaultSize={35} minSize={25} maxSize={50}>
@@ -95,6 +102,7 @@ export function MainContent({ user, project, readOnly = false }: MainContentProp
                       {/* Artifex header spans full left panel */}
                       <div className="h-[51px] flex items-center gap-2 px-4 border-b border-neutral-700/60 shrink-0">
                         <h1 className="text-lg font-semibold text-neutral-100 tracking-tight">Artifex</h1>
+                        {!user && <LocalModeIndicator />}
                       </div>
 
                       {/* Sidebar + chat content side by side */}
@@ -131,47 +139,53 @@ export function MainContent({ user, project, readOnly = false }: MainContentProp
                             <ResizableHandle className="w-[1px] bg-neutral-700 hover:bg-neutral-600 transition-colors" />
                             <ResizablePanel defaultSize={70} minSize={30}>
                               <div className="flex flex-col h-full min-w-0">
-                                {project && (
-                                  <div className="h-[41px] flex items-center px-4 border-b border-neutral-700/60 shrink-0 gap-3">
-                                    {!sidebarOpen && (
-                                      <button
-                                        onClick={toggleSidebar}
-                                        className="h-7 w-7 flex items-center justify-center text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700 rounded-md transition-colors shrink-0"
-                                        title="Open sidebar"
-                                      >
-                                        <PanelLeft className="h-4 w-4" />
-                                      </button>
-                                    )}
-                                    <span className="text-sm text-neutral-400 truncate">{projectName}</span>
-                                    <div className="flex items-center gap-2.5 ml-auto shrink-0 text-[11px] text-neutral-500">
-                                      {project.messageCount > 0 && (
-                                        <span className="flex items-center gap-1" title={`${project.messageCount} messages`}>
-                                          <MessageSquare className="h-3 w-3" />
-                                          {project.messageCount}
-                                        </span>
-                                      )}
-                                      {(project.totalInputTokens + project.totalOutputTokens) > 0 && (
-                                        <span
-                                          className="flex items-center gap-1"
-                                          title={`${project.totalInputTokens.toLocaleString()} input / ${project.totalOutputTokens.toLocaleString()} output tokens`}
+                                {project ? (
+                                  <>
+                                    <div className="h-[41px] flex items-center px-4 border-b border-neutral-700/60 shrink-0 gap-3">
+                                      {!sidebarOpen && (
+                                        <button
+                                          onClick={toggleSidebar}
+                                          className="h-7 w-7 flex items-center justify-center text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700 rounded-md transition-colors shrink-0"
+                                          title="Open sidebar"
                                         >
-                                          <Zap className="h-3 w-3" />
-                                          {formatTokens(project.totalInputTokens + project.totalOutputTokens)}
-                                        </span>
+                                          <PanelLeft className="h-4 w-4" />
+                                        </button>
                                       )}
-                                      <span className="flex items-center gap-1" title="Data stored in database">
-                                        <HardDrive className="h-3 w-3" />
-                                        {formatBytes(project.dataSize)}
-                                      </span>
-                                      <span title={new Date(project.createdAt).toLocaleString()}>
-                                        {new Date(project.createdAt).toLocaleDateString()}
-                                      </span>
+                                      <span className="text-sm text-neutral-400 truncate">{projectName}</span>
+                                      <div className="flex items-center gap-2.5 ml-auto shrink-0 text-[11px] text-neutral-500">
+                                        {project.messageCount > 0 && (
+                                          <span className="flex items-center gap-1" title={`${project.messageCount} messages`}>
+                                            <MessageSquare className="h-3 w-3" />
+                                            {project.messageCount}
+                                          </span>
+                                        )}
+                                        {(project.totalInputTokens + project.totalOutputTokens) > 0 && (
+                                          <span
+                                            className="flex items-center gap-1"
+                                            title={`${project.totalInputTokens.toLocaleString()} input / ${project.totalOutputTokens.toLocaleString()} output tokens`}
+                                          >
+                                            <Zap className="h-3 w-3" />
+                                            {formatTokens(project.totalInputTokens + project.totalOutputTokens)}
+                                          </span>
+                                        )}
+                                        <span className="flex items-center gap-1" title="Data stored in database">
+                                          <HardDrive className="h-3 w-3" />
+                                          {formatBytes(project.dataSize)}
+                                        </span>
+                                        <span title={new Date(project.createdAt).toLocaleString()}>
+                                          {new Date(project.createdAt).toLocaleDateString()}
+                                        </span>
+                                      </div>
                                     </div>
+                                    <div className="flex-1 overflow-hidden">
+                                      <ChatInterface readOnly={readOnly} onSwitchToCode={() => setActiveView("code")} />
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="flex-1 flex items-center justify-center">
+                                    <p className="text-sm text-neutral-500">Create or select a project to start chatting</p>
                                   </div>
                                 )}
-                                <div className="flex-1 overflow-hidden">
-                                  <ChatInterface readOnly={readOnly} onSwitchToCode={() => setActiveView("code")} />
-                                </div>
                               </div>
                             </ResizablePanel>
                           </ResizablePanelGroup>
@@ -246,6 +260,7 @@ export function MainContent({ user, project, readOnly = false }: MainContentProp
                     ) : (
                       <ResizablePanelGroup
                         direction="horizontal"
+                        autoSaveId="artifex-code-layout"
                         className="h-full"
                       >
                         {/* File Tree */}

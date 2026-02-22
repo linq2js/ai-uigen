@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <linearGradient id="spark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded square background -->
+  <rect width="512" height="512" rx="108" fill="url(#bg)"/>
+  <!-- Code bracket left < -->
+  <path d="M148 256l72-88a12 12 0 0 0-2-17l-14-11a12 12 0 0 0-17 2l-86 104a12 12 0 0 0 0 15l86 104a12 12 0 0 0 17 2l14-11a12 12 0 0 0 2-17z" fill="rgba(255,255,255,0.5)"/>
+  <!-- Code bracket right > -->
+  <path d="M364 256l-72 88a12 12 0 0 0 2 17l14 11a12 12 0 0 0 17-2l86-104a12 12 0 0 0 0-15l-86-104a12 12 0 0 0-17-2l-14 11a12 12 0 0 0-2 17z" fill="rgba(255,255,255,0.5)"/>
+  <!-- Lightning bolt (AI spark) -->
+  <path d="M280 128l-56 128h48l-16 128 88-160h-56z" fill="url(#spark)"/>
+  <!-- Subtle glow on lightning -->
+  <path d="M280 128l-56 128h48l-16 128 88-160h-56z" fill="white" opacity="0.25"/>
+</svg>

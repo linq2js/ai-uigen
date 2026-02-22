@@ -11,11 +11,18 @@ interface AttachmentDescriptor {
   isImage: boolean;
 }
 
+interface EditorContext {
+  selectedFile: string | null;
+  visibleRange: { startLine: number; endLine: number } | null;
+}
+
 interface PromptOptions {
   globalRules?: string;
   projectRules?: string;
   skills?: SkillDescriptor[];
   attachments?: AttachmentDescriptor[];
+  editorContext?: EditorContext;
+  previewErrors?: string[];
 }
 
 // Short mandatory notes that tell the AI which preference is active and which skill to read.
@@ -156,6 +163,38 @@ ${skillList}
 The user has attached files in earlier messages. Their content was stripped from history to save tokens. If you need to re-examine any of these files, use the \`read_attachment\` tool with the filename. The current turn's attachments (if any) are already visible inline.
 
 ${attList}
+`);
+  }
+
+  // Editor context
+  const editorContext = options?.editorContext;
+  if (editorContext?.selectedFile) {
+    let editorSection = `
+## Current Editor State
+
+The user is currently viewing:
+- File: ${editorContext.selectedFile}`;
+
+    if (editorContext.visibleRange) {
+      editorSection += `\n- Visible lines: ${editorContext.visibleRange.startLine}–${editorContext.visibleRange.endLine}`;
+    }
+
+    editorSection +=
+      "\n\nFocus your edits on this file and area when relevant.";
+    sections.push(editorSection);
+  }
+
+  // Preview errors
+  const previewErrors = options?.previewErrors;
+  if (previewErrors && previewErrors.length > 0) {
+    const errorList = previewErrors.map((e) => `- ${e}`).join("\n");
+    sections.push(`
+## Preview Errors
+
+The live preview is showing the following errors:
+${errorList}
+
+Address these errors if relevant to the user's request.
 `);
   }
 

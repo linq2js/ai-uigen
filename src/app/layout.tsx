@@ -31,7 +31,21 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <MobileGuard>{children}</MobileGuard>
-        <Toaster theme="dark" position="bottom-right" />
+        <Toaster
+          theme="dark"
+          position="bottom-right"
+          toastOptions={{
+            style: {
+              background: "#262626",
+              border: "1px solid #404040",
+              color: "#f5f5f5",
+            },
+            classNames: {
+              toast: "!opacity-100",
+              error: "!bg-[#3b1c1c] !border-red-900/60 !text-red-200",
+            },
+          }}
+        />
       </body>
     </html>
   );

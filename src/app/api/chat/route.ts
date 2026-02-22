@@ -89,6 +89,11 @@ export async function POST(req: Request) {
     globalRules?: string;
     projectRules?: string;
     skills?: Skill[];
+    editorContext?: {
+      selectedFile: string | null;
+      visibleRange: { startLine: number; endLine: number } | null;
+    };
+    previewErrors?: string[];
   };
 
   try {
@@ -109,10 +114,14 @@ export async function POST(req: Request) {
     globalRules,
     projectRules,
     skills,
+    editorContext,
+    previewErrors,
   } = body;
 
-  // Require authentication when operating on a saved project
-  if (projectId) {
+  // Require authentication when operating on a server-side project
+  // Local projects (local_*) are stored in IndexedDB and don't need auth
+  const isLocalProject = projectId?.startsWith("local_");
+  if (projectId && !isLocalProject) {
     const session = await getSession();
     if (!session) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -146,6 +155,8 @@ export async function POST(req: Request) {
       skills: skillDescriptors.length > 0 ? skillDescriptors : undefined,
       attachments:
         attachmentDescriptors.length > 0 ? attachmentDescriptors : undefined,
+      editorContext,
+      previewErrors: previewErrors && previewErrors.length > 0 ? previewErrors : undefined,
     }),
     providerOptions: {
       anthropic: { cacheControl: { type: "ephemeral" } },
@@ -153,6 +164,7 @@ export async function POST(req: Request) {
   });
 
   const thinkingEnabled = preferences?.aiModel?.includes("Thinking") ?? false;
+  const THINKING_BUDGET = 10_000;
 
   // When thinking is enabled the model reserves budgetTokens from the context
   // window for its internal reasoning, so we must leave more room in the input.
@@ -182,15 +194,17 @@ export async function POST(req: Request) {
   const result = streamText({
     model,
     messages: truncatedMessages,
-    maxTokens: thinkingEnabled ? 128_000 : 10_000,
+    maxTokens: thinkingEnabled ? 128_000 - THINKING_BUDGET : 10_000,
     maxSteps: isMockProvider
       ? Math.min(4, requestedSteps)
       : Math.min(requestedSteps, STEPS_PER_REQUEST),
+    abortSignal: req.signal,
     onError: (err: any) => {
+      if (err?.name === "AbortError") return;
       console.error(err);
     },
     providerOptions: thinkingEnabled
-      ? { anthropic: { thinking: { type: "enabled", budgetTokens: 10000 } } }
+      ? { anthropic: { thinking: { type: "enabled", budgetTokens: THINKING_BUDGET } } }
       : undefined,
     tools: {
       str_replace_editor: buildStrReplaceTool(fileSystem),
@@ -203,7 +217,7 @@ export async function POST(req: Request) {
       }),
     },
     onFinish: async ({ response, usage }) => {
-      if (projectId) {
+      if (projectId && !isLocalProject) {
         try {
           const session = await getSession();
           if (!session) {

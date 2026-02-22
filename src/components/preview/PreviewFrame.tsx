@@ -6,7 +6,7 @@ import {
   createImportMap,
   createPreviewHTML,
 } from "@/lib/transform/jsx-transformer";
-import { AlertCircle, Monitor, Smartphone, Tablet, ChevronDown, RotateCw, RefreshCw, Terminal, X, Trash2 } from "lucide-react";
+import { AlertCircle, Monitor, Smartphone, Tablet, ChevronDown, RotateCw, RefreshCw, Terminal, X, Trash2, Copy, ClipboardCopy, Check } from "lucide-react";
 import {
   Popover,
   PopoverTrigger,
@@ -44,7 +44,7 @@ const DEVICE_PRESETS: DevicePreset[] = [
 export function PreviewFrame() {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { getAllFiles, refreshTrigger } = useFileSystem();
+  const { getAllFiles, refreshTrigger, setPreviewErrors } = useFileSystem();
   const [error, setError] = useState<string | null>(null);
   const [entryPoint, setEntryPoint] = useState<string>("/App.jsx");
   const [isFirstLoad, setIsFirstLoad] = useState(true);
@@ -64,9 +64,43 @@ export function PreviewFrame() {
   const isDraggingRef = useRef(false);
   const dragStartYRef = useRef(0);
   const dragStartHeightRef = useRef(0);
+  const [logFilter, setLogFilter] = useState<Set<LogEntry["level"]>>(new Set(["error", "warn", "info"]));
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [copiedAll, setCopiedAll] = useState(false);
 
   const addLog = useCallback((entry: LogEntry) => {
     setLogs((prev) => [...prev.slice(-499), entry]);
+  }, []);
+
+  const formatLogEntry = useCallback((entry: LogEntry) => {
+    const time = new Date(entry.timestamp).toLocaleTimeString();
+    return `[${time}] [${entry.level.toUpperCase()}] [${entry.source}] ${entry.message}`;
+  }, []);
+
+  const copyLogEntry = useCallback((entry: LogEntry, index: number) => {
+    navigator.clipboard.writeText(formatLogEntry(entry));
+    setCopiedIndex(index);
+    setTimeout(() => setCopiedIndex(null), 1500);
+  }, [formatLogEntry]);
+
+  const copyAllLogs = useCallback(() => {
+    const filtered = logs.filter((l) => logFilter.has(l.level));
+    const text = filtered.map(formatLogEntry).join("\n");
+    navigator.clipboard.writeText(text);
+    setCopiedAll(true);
+    setTimeout(() => setCopiedAll(false), 1500);
+  }, [logs, logFilter, formatLogEntry]);
+
+  const toggleFilter = useCallback((level: LogEntry["level"]) => {
+    setLogFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(level)) {
+        if (next.size > 1) next.delete(level);
+      } else {
+        next.add(level);
+      }
+      return next;
+    });
   }, []);
 
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
@@ -111,6 +145,15 @@ export function PreviewFrame() {
       logsEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [logs, showLogs]);
+
+  // Sync error-level logs to context for LLM awareness
+  useEffect(() => {
+    const errors = logs
+      .filter((l) => l.level === "error")
+      .slice(-5)
+      .map((l) => l.message);
+    setPreviewErrors(errors);
+  }, [logs, setPreviewErrors]);
 
   // Hydrate device state from localStorage
   useEffect(() => {
@@ -469,13 +512,47 @@ export function PreviewFrame() {
         <div className="w-8 h-0.5 rounded-full bg-neutral-700 group-hover:bg-neutral-500 transition-colors" />
       </div>
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-neutral-800 shrink-0">
-        <span className="text-xs font-medium text-neutral-400">
-          Logs
-          {logs.length > 0 && (
-            <span className="ml-1.5 text-neutral-600">({logs.length})</span>
-          )}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-neutral-400">
+            Logs
+            {logs.length > 0 && (
+              <span className="ml-1.5 text-neutral-600">({logs.length})</span>
+            )}
+          </span>
+          {/* Log type filter chips */}
+          <div className="flex items-center gap-0.5 ml-1">
+            {(["error", "warn", "info"] as const).map((level) => {
+              const active = logFilter.has(level);
+              const count = logs.filter((l) => l.level === level).length;
+              return (
+                <button
+                  key={level}
+                  onClick={() => toggleFilter(level)}
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase transition-colors ${
+                    active
+                      ? level === "error"
+                        ? "bg-red-500/20 text-red-400"
+                        : level === "warn"
+                        ? "bg-yellow-500/20 text-yellow-400"
+                        : "bg-blue-500/20 text-blue-400"
+                      : "bg-neutral-800 text-neutral-600"
+                  }`}
+                  title={`${active ? "Hide" : "Show"} ${level} logs`}
+                >
+                  {level}{count > 0 && ` ${count}`}
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <div className="flex items-center gap-1">
+          <button
+            onClick={copyAllLogs}
+            className="p-1 rounded hover:bg-neutral-800 transition-colors text-neutral-600 hover:text-neutral-400"
+            title="Copy all visible logs"
+          >
+            {copiedAll ? <Check className="h-3 w-3 text-green-400" /> : <ClipboardCopy className="h-3 w-3" />}
+          </button>
           <button
             onClick={() => setLogs([])}
             className="p-1 rounded hover:bg-neutral-800 transition-colors text-neutral-600 hover:text-neutral-400"
@@ -493,48 +570,58 @@ export function PreviewFrame() {
         </div>
       </div>
       <div className="flex-1 overflow-y-auto font-mono text-xs">
-        {logs.length === 0 ? (
+        {logs.filter((l) => logFilter.has(l.level)).length === 0 ? (
           <div className="flex items-center justify-center h-full text-neutral-600 text-xs">
             No logs yet
           </div>
         ) : (
-          logs.map((entry, i) => (
-            <div
-              key={i}
-              className={`flex gap-2 px-3 py-1.5 border-b border-neutral-900 ${
-                entry.level === "error"
-                  ? "bg-red-500/5 text-red-400"
-                  : entry.level === "warn"
-                  ? "bg-yellow-500/5 text-yellow-400"
-                  : "text-neutral-400"
-              }`}
-            >
-              <span className="shrink-0 text-neutral-600 tabular-nums select-none">
-                {new Date(entry.timestamp).toLocaleTimeString()}
-              </span>
-              <span
-                className={`shrink-0 uppercase text-[10px] font-bold px-1 py-0.5 rounded leading-none ${
+          logs.map((entry, i) => {
+            if (!logFilter.has(entry.level)) return null;
+            return (
+              <div
+                key={i}
+                className={`group flex gap-2 px-3 py-1.5 border-b border-neutral-900 ${
                   entry.level === "error"
-                    ? "bg-red-500/20 text-red-400"
+                    ? "bg-red-500/5 text-red-400"
                     : entry.level === "warn"
-                    ? "bg-yellow-500/20 text-yellow-400"
-                    : "bg-blue-500/20 text-blue-400"
+                    ? "bg-yellow-500/5 text-yellow-400"
+                    : "text-neutral-400"
                 }`}
               >
-                {entry.level}
-              </span>
-              <span
-                className={`shrink-0 text-[10px] px-1 py-0.5 rounded leading-none ${
-                  entry.source === "build"
-                    ? "bg-purple-500/20 text-purple-400"
-                    : "bg-neutral-700 text-neutral-500"
-                }`}
-              >
-                {entry.source}
-              </span>
-              <span className="break-all whitespace-pre-wrap">{entry.message}</span>
-            </div>
-          ))
+                <span className="shrink-0 text-neutral-600 tabular-nums select-none">
+                  {new Date(entry.timestamp).toLocaleTimeString()}
+                </span>
+                <span
+                  className={`shrink-0 uppercase text-[10px] font-bold px-1 py-0.5 rounded leading-none ${
+                    entry.level === "error"
+                      ? "bg-red-500/20 text-red-400"
+                      : entry.level === "warn"
+                      ? "bg-yellow-500/20 text-yellow-400"
+                      : "bg-blue-500/20 text-blue-400"
+                  }`}
+                >
+                  {entry.level}
+                </span>
+                <span
+                  className={`shrink-0 text-[10px] px-1 py-0.5 rounded leading-none ${
+                    entry.source === "build"
+                      ? "bg-purple-500/20 text-purple-400"
+                      : "bg-neutral-700 text-neutral-500"
+                  }`}
+                >
+                  {entry.source}
+                </span>
+                <span className="break-all whitespace-pre-wrap flex-1">{entry.message}</span>
+                <button
+                  onClick={() => copyLogEntry(entry, i)}
+                  className="shrink-0 p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-neutral-800 transition-all text-neutral-600 hover:text-neutral-400 self-start"
+                  title="Copy log entry"
+                >
+                  {copiedIndex === i ? <Check className="h-3 w-3 text-green-400" /> : <Copy className="h-3 w-3" />}
+                </button>
+              </div>
+            );
+          })
         )}
         <div ref={logsEndRef} />
       </div>
