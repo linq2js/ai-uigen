@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import Editor, { type Monaco } from "@monaco-editor/react";
+import type { editor, Position } from "monaco-editor";
 import { useFileSystem } from "@/lib/contexts/file-system-context";
 import { Code2 } from "lucide-react";
 import {
@@ -161,7 +162,7 @@ export function CodeEditor({ readOnly = false }: { readOnly?: boolean }) {
     const defProvider = monaco.languages.registerDefinitionProvider(
       ["javascript", "typescript"],
       {
-        provideDefinition(model, position) {
+        provideDefinition(model: editor.ITextModel, position: Position) {
           const word = model.getWordAtPosition(position);
           if (!word) return null;
 
@@ -174,7 +175,7 @@ export function CodeEditor({ readOnly = false }: { readOnly?: boolean }) {
           const modulePath = findImportForSymbol(fileContent, symbolName);
           if (!modulePath) return null;
 
-          const targetFile = resolveImportPath(currentPath, modulePath, (p) =>
+          const targetFile = resolveImportPath(currentPath, modulePath, (p: string) =>
             fileSystem.exists(p)
           );
           if (!targetFile) return null;
