@@ -1,5 +1,4 @@
 import type { GenerationPreferences } from "@/lib/types/preferences";
-import { DEFAULT_PREFERENCES } from "@/lib/types/preferences";
 import type { Skill } from "@/lib/types/skill";
 
 import { materialDesignSkill } from "./material-design";
@@ -52,41 +51,16 @@ const codeQualitySkills: Record<string, Skill> = {
 };
 
 /**
- * Returns system skills that should be activated based on the user's preferences.
- * Only returns skills for preferences that differ from the defaults.
+ * Returns all system skills so the AI can discover and read any of them
+ * when relevant to the user's request, regardless of active preferences.
  */
-export function getSystemSkills(preferences: Partial<GenerationPreferences>): Skill[] {
-  const prefs = { ...DEFAULT_PREFERENCES, ...preferences };
-  const skills: Skill[] = [];
-
-  if (prefs.designStyle !== DEFAULT_PREFERENCES.designStyle) {
-    const skill = designStyleSkills[prefs.designStyle];
-    if (skill) skills.push(skill);
-  }
-
-  if (prefs.architectureStyle !== DEFAULT_PREFERENCES.architectureStyle) {
-    const skill = architectureStyleSkills[prefs.architectureStyle];
-    if (skill) skills.push(skill);
-  }
-
-  if (prefs.stateManagement !== DEFAULT_PREFERENCES.stateManagement) {
-    const skill = stateManagementSkills[prefs.stateManagement];
-    if (skill) skills.push(skill);
-  }
-
-  if (prefs.cssFramework !== DEFAULT_PREFERENCES.cssFramework) {
-    const skill = cssFrameworkSkills[prefs.cssFramework];
-    if (skill) skills.push(skill);
-  }
-
-  if (prefs.codeQuality !== DEFAULT_PREFERENCES.codeQuality) {
-    const skill = codeQualitySkills[prefs.codeQuality];
-    if (skill) skills.push(skill);
-  }
-
-  if (prefs.accessibility) {
-    skills.push(accessibilitySkill);
-  }
-
-  return skills;
+export function getSystemSkills(_preferences: Partial<GenerationPreferences>): Skill[] {
+  return [
+    ...Object.values(designStyleSkills),
+    ...Object.values(architectureStyleSkills),
+    ...Object.values(stateManagementSkills),
+    ...Object.values(cssFrameworkSkills),
+    ...Object.values(codeQualitySkills),
+    accessibilitySkill,
+  ];
 }

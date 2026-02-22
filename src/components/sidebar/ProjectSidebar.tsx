@@ -351,7 +351,9 @@ export function ProjectSidebar({
                             : "text-neutral-400 hover:bg-neutral-800/50 hover:text-neutral-200"
                         }`}
                         onClick={() => {
-                          if (!isBeingRenamed) router.push(`/${project.id}`);
+                          if (isBeingRenamed || isActive) return;
+                          onNavigating?.(true);
+                          router.push(`/${project.id}`);
                         }}
                       >
                         {isActive && (

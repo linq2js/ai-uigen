@@ -105,9 +105,6 @@ export const PREFERENCE_CATEGORIES: PreferenceCategory[] = [
     label: "Code",
     options: ["Auto", "JavaScript", "TypeScript", "TypeScript Strict"],
   },
-  {
-    key: "aiModel",
-    label: "Model",
-    options: ["Haiku 4.5", "Sonnet 4.6", "Opus 4.6"],
-  },
 ];
+
+export const AI_MODEL_OPTIONS: AIModel[] = ["Haiku 4.5", "Sonnet 4.6", "Opus 4.6"];

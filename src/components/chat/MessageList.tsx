@@ -18,7 +18,15 @@ import {
   FileText,
   X,
   GitBranch,
+  Copy,
+  MoreHorizontal,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import type { QueuedMessage } from "@/lib/types/queue";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { AttachmentPreview } from "./AttachmentPreview";
@@ -110,6 +118,16 @@ function getToolDisplay(tool: {
   };
 }
 
+function getMessageText(message: Message): string {
+  if (message.parts) {
+    return message.parts
+      .filter((p): p is Extract<typeof p, { type: "text" }> => p.type === "text")
+      .map((p) => p.text)
+      .join("\n");
+  }
+  return message.content || "";
+}
+
 const MessageRow = React.memo(function MessageRow({
   message,
   isLoading,
@@ -123,6 +141,10 @@ const MessageRow = React.memo(function MessageRow({
   onFileClick: (path: string) => void;
   onCloneFromMessage?: () => void;
 }) {
+  const handleCopy = useCallback(() => {
+    const text = getMessageText(message);
+    navigator.clipboard.writeText(text);
+  }, [message]);
   return (
     <div
       className={cn(
@@ -130,13 +152,13 @@ const MessageRow = React.memo(function MessageRow({
         message.role === "user" ? "justify-end" : "justify-start"
       )}
     >
-      <div
-        className={cn(
-          "flex flex-col gap-1",
-          message.role === "user" ? "max-w-[85%]" : "w-full",
-          message.role === "user" ? "items-end" : "items-start"
-        )}
-      >
+        <div
+          className={cn(
+            "flex flex-col gap-1 min-w-0",
+            message.role === "user" ? "max-w-[85%]" : "w-full",
+            message.role === "user" ? "items-end" : "items-start"
+          )}
+        >
         {message.role === "user" &&
           message.experimental_attachments &&
           message.experimental_attachments.length > 0 && (
@@ -151,7 +173,7 @@ const MessageRow = React.memo(function MessageRow({
           )}
         <div
           className={cn(
-            "rounded-xl px-3 py-1.5",
+            "rounded-xl px-3 py-1.5 min-w-0 max-w-full overflow-hidden",
             message.role === "user"
               ? "bg-blue-600 text-white"
               : "bg-neutral-800 text-neutral-100 border border-neutral-700"
@@ -199,19 +221,12 @@ const MessageRow = React.memo(function MessageRow({
                       const toolInvocation = part.toolInvocation;
                       const display = getToolDisplay(toolInvocation);
                       const ToolIcon = display.icon;
-                      const isDone =
-                        toolInvocation.state === "result" &&
-                        toolInvocation.result;
                       return (
                         <div
                           key={partIndex}
                           className="flex items-center gap-1.5 mt-1 text-xs text-neutral-500"
                         >
-                          {isDone ? (
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/70 flex-shrink-0"></div>
-                          ) : (
-                            <Loader2 className="w-3 h-3 animate-spin text-blue-400 flex-shrink-0" />
-                          )}
+                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/70 shrink-0"></div>
                           <ToolIcon className="w-3 h-3 flex-shrink-0" />
                           <span>{display.label}</span>
                           {display.detail && display.path ? (
@@ -265,17 +280,30 @@ const MessageRow = React.memo(function MessageRow({
             ) : null}
           </div>
         </div>
-        {onCloneFromMessage && (
-          <button
-            onClick={onCloneFromMessage}
-            className="opacity-0 group-hover/msg:opacity-100 transition-opacity flex items-center gap-1 px-1.5 py-0.5 rounded-md text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700/60 text-xs"
-            title="Clone from here"
-            aria-label="Clone from here"
-          >
-            <GitBranch className="h-3 w-3" />
-            <span>Clone from here</span>
-          </button>
-        )}
+        <div className="opacity-0 group-hover/msg:opacity-100 transition-opacity">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex items-center gap-1 px-1.5 py-0.5 rounded-md text-neutral-500 hover:text-neutral-200 hover:bg-neutral-700/60 text-xs"
+                aria-label="Message actions"
+              >
+                <MoreHorizontal className="h-3.5 w-3.5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" side="bottom">
+              <DropdownMenuItem onClick={handleCopy}>
+                <Copy />
+                Copy message
+              </DropdownMenuItem>
+              {onCloneFromMessage && (
+                <DropdownMenuItem onClick={onCloneFromMessage}>
+                  <GitBranch />
+                  Clone from here
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
     </div>
   );
@@ -400,7 +428,7 @@ export function MessageList({
         Footer: () => <div style={{ height: bottomPadding }} />,
       }}
       itemContent={(index, item) => (
-        <div className="px-3 py-2">
+        <div className="py-2">
           <div className="max-w-4xl mx-auto">
             {item.type === "message" ? (
               <MessageRow

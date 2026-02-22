@@ -11,9 +11,16 @@ import {
   useRef,
   useState,
 } from "react";
-import { Send, Paperclip, Square, Settings } from "lucide-react";
+import { Send, Paperclip, Square, Settings, ChevronDown, Check } from "lucide-react";
 import { ChatRequestOptions } from "ai";
 import { ChatAttachment, MentionItem } from "@/lib/types/attachments";
+import { AIModel, AI_MODEL_OPTIONS } from "@/lib/types/preferences";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { AttachmentBar } from "./AttachmentBar";
 import { MentionPopup } from "./MentionPopup";
 import { CheckpointDropdown } from "@/components/checkpoints/CheckpointDropdown";
@@ -35,6 +42,8 @@ interface MessageInputProps {
   vaultFiles: string[];
   onOpenProjectSettings?: () => void;
   projectId?: string;
+  aiModel: AIModel;
+  onModelChange: (model: AIModel) => void;
 }
 
 export function MessageInput({
@@ -51,6 +60,8 @@ export function MessageInput({
   vaultFiles,
   onOpenProjectSettings,
   projectId,
+  aiModel,
+  onModelChange,
 }: MessageInputProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -297,10 +308,45 @@ export function MessageInput({
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             placeholder="Describe the app or component you want to create..."
-            className="w-full min-h-[60px] max-h-[200px] pl-4 pr-24 py-2.5 rounded-xl border border-neutral-700 bg-neutral-800 text-neutral-100 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all placeholder:text-neutral-500 text-[15px] font-normal"
+            className="w-full min-h-[60px] max-h-[200px] px-4 py-2.5 pb-10 rounded-xl border border-neutral-700 bg-neutral-800 text-neutral-100 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/50 transition-all placeholder:text-neutral-500 text-[15px] font-normal"
             rows={3}
           />
-          <div className="absolute right-3 bottom-3 flex items-center gap-1">
+          <div className="absolute left-3 right-3 bottom-2 flex items-center justify-between">
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border border-blue-500/40 bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 transition-colors cursor-pointer"
+                >
+                  <span>{aiModel}</span>
+                  <ChevronDown className="w-3 h-3 opacity-50" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-44 p-1" sideOffset={6}>
+                {AI_MODEL_OPTIONS.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => onModelChange(option)}
+                    className={cn(
+                      "flex items-center w-full gap-2 px-3 py-1.5 text-sm rounded-md transition-colors cursor-pointer",
+                      option === aiModel
+                        ? "bg-blue-500/15 text-blue-400 font-medium"
+                        : "text-neutral-300 hover:bg-neutral-700"
+                    )}
+                  >
+                    <Check
+                      className={cn(
+                        "w-3.5 h-3.5 shrink-0",
+                        option === aiModel ? "opacity-100 text-blue-400" : "opacity-0"
+                      )}
+                    />
+                    {option}
+                  </button>
+                ))}
+              </PopoverContent>
+            </Popover>
+            <div className="flex items-center gap-1">
             {onOpenProjectSettings && (
               <button
                 type="button"
@@ -342,6 +388,7 @@ export function MessageInput({
                 />
               </button>
             )}
+            </div>
           </div>
         </div>
 

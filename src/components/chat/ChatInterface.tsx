@@ -47,7 +47,7 @@ export function ChatInterface({ readOnly = false, onSwitchToCode }: { readOnly?:
 
   return (
     <div className="relative h-full overflow-hidden">
-      <div className="h-full overflow-hidden px-3 pt-3 pb-0">
+      <div className="h-full overflow-hidden px-4 pt-3 pb-0">
         <MessageList messages={messages} isLoading={status === "streaming"} onSwitchToCode={onSwitchToCode} bottomPadding={bottomPanelHeight} queue={queue} onCancelQueued={cancelQueuedMessage} onCloneFromMessage={readOnly ? undefined : (idx) => setCloneFromIndex(idx)} />
       </div>
       {!readOnly && error && !errorDismissed && (
@@ -93,6 +93,8 @@ export function ChatInterface({ readOnly = false, onSwitchToCode }: { readOnly?:
             vaultFiles={vaultFiles}
             onOpenProjectSettings={() => setProjectSettingsOpen(true)}
             projectId={projectId}
+            aiModel={preferences.aiModel}
+            onModelChange={(model) => setPreference("aiModel", model)}
           />
         </div>
       )}

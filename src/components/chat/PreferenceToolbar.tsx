@@ -101,7 +101,7 @@ export function PreferenceToolbar({
   isDefault,
   onReset,
 }: PreferenceToolbarProps) {
-  const hasModified = PREFERENCE_CATEGORIES.some((c) => !isDefault(c.key)) || preferences.accessibility;
+  const hasModified = PREFERENCE_CATEGORIES.some((c) => !isDefault(c.key)) || !isDefault("aiModel") || preferences.accessibility;
 
   return (
     <div className="flex flex-wrap items-center gap-1.5 pb-1.5 pt-2 px-3 bg-neutral-900 rounded-t-xl">

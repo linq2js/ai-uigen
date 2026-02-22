@@ -118,7 +118,9 @@ export function CodeEditor({ readOnly = false }: { readOnly?: boolean }) {
     editorRef.current = editor;
     monacoRef.current = monaco;
 
-    const compilerOptions: Parameters<typeof monaco.languages.typescript.typescriptDefaults.setCompilerOptions>[0] = {
+    const compilerOptions: Parameters<
+      typeof monaco.languages.typescript.typescriptDefaults.setCompilerOptions
+    >[0] = {
       jsx: monaco.languages.typescript.JsxEmit.ReactJSX,
       jsxImportSource: "react",
       esModuleInterop: true,
@@ -132,8 +134,12 @@ export function CodeEditor({ readOnly = false }: { readOnly?: boolean }) {
       strictNullChecks: false,
       typeRoots: [],
     };
-    monaco.languages.typescript.typescriptDefaults.setCompilerOptions(compilerOptions);
-    monaco.languages.typescript.javascriptDefaults.setCompilerOptions(compilerOptions);
+    monaco.languages.typescript.typescriptDefaults.setCompilerOptions(
+      compilerOptions
+    );
+    monaco.languages.typescript.javascriptDefaults.setCompilerOptions(
+      compilerOptions
+    );
 
     // Disable semantic validation — the sandbox has no type definitions (packages
     // resolve via esm.sh at runtime), so all type-level diagnostics are false
@@ -142,8 +148,12 @@ export function CodeEditor({ readOnly = false }: { readOnly?: boolean }) {
       noSemanticValidation: true,
       noSyntaxValidation: false,
     };
-    monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions(diagnosticsOptions);
-    monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions(diagnosticsOptions);
+    monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions(
+      diagnosticsOptions
+    );
+    monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions(
+      diagnosticsOptions
+    );
 
     syncModels(monaco);
 
@@ -241,7 +251,9 @@ export function CodeEditor({ readOnly = false }: { readOnly?: boolean }) {
     const mentionAction = editor.addAction({
       id: "mention-code-in-chat",
       label: "Mention in Chat",
-      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyL],
+      keybindings: [
+        monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyL,
+      ],
       run(ed: any) {
         const sel = ed.getSelection();
         const currentPath = selectedFileRef.current;
@@ -258,7 +270,12 @@ export function CodeEditor({ readOnly = false }: { readOnly?: boolean }) {
       },
     });
 
-    disposablesRef.current = [defProvider, editorOpener, mouseHandler, mentionAction];
+    disposablesRef.current = [
+      defProvider,
+      editorOpener,
+      mouseHandler,
+      mentionAction,
+    ];
   };
 
   // Keep a ref to selectedFile so callbacks always have the latest value
