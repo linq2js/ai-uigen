@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { VirtualFileSystem } from "@/lib/file-system";
 
-const TextEditorParameters = z.object({
+export const TextEditorParameters = z.object({
   command: z
     .enum(["view", "create", "str_replace", "insert", "undo_edit"])
     .describe(
@@ -38,41 +38,41 @@ const TextEditorParameters = z.object({
     ),
 });
 
+/** Tool schema (no execute) for the thin proxy. */
+export const strReplaceEditorSchema = {
+  description:
+    "A text editor tool for viewing, creating, and editing files. Use 'view' with view_range to read specific lines from a file (e.g. view_range: [1, 50] reads lines 1-50).",
+  parameters: TextEditorParameters,
+};
+
+/** Execute the str_replace_editor tool against a VirtualFileSystem instance. */
+export function executeStrReplaceEditor(
+  fileSystem: VirtualFileSystem,
+  args: z.infer<typeof TextEditorParameters>
+): string {
+  switch (args.command) {
+    case "view":
+      return fileSystem.viewFile(
+        args.path,
+        args.view_range as [number, number] | undefined
+      );
+    case "create":
+      return fileSystem.createFileWithParents(args.path, args.file_text || "");
+    case "str_replace":
+      return fileSystem.replaceInFile(args.path, args.old_str || "", args.new_str || "");
+    case "insert":
+      return fileSystem.insertInFile(args.path, args.insert_line || 0, args.new_str || "");
+    case "undo_edit":
+      return "Error: undo_edit command is not supported in this version. Use str_replace to revert changes.";
+  }
+}
+
 export const buildStrReplaceTool = (fileSystem: VirtualFileSystem) => {
   return {
     id: "str_replace_editor" as const,
-    description:
-      "A text editor tool for viewing, creating, and editing files. Use 'view' with view_range to read specific lines from a file (e.g. view_range: [1, 50] reads lines 1-50).",
+    ...strReplaceEditorSchema,
     args: {},
-    parameters: TextEditorParameters,
-    execute: async ({
-      command,
-      path,
-      file_text,
-      insert_line,
-      new_str,
-      old_str,
-      view_range,
-    }: z.infer<typeof TextEditorParameters>) => {
-      switch (command) {
-        case "view":
-          return fileSystem.viewFile(
-            path,
-            view_range as [number, number] | undefined
-          );
-
-        case "create":
-          return fileSystem.createFileWithParents(path, file_text || "");
-
-        case "str_replace":
-          return fileSystem.replaceInFile(path, old_str || "", new_str || "");
-
-        case "insert":
-          return fileSystem.insertInFile(path, insert_line || 0, new_str || "");
-
-        case "undo_edit":
-          return `Error: undo_edit command is not supported in this version. Use str_replace to revert changes.`;
-      }
-    },
+    execute: async (args: z.infer<typeof TextEditorParameters>) =>
+      executeStrReplaceEditor(fileSystem, args),
   };
 };

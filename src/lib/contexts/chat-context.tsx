@@ -25,9 +25,15 @@ import {
   MAX_AUTO_CONTINUATIONS,
 } from "@/lib/types/preferences";
 import type { Skill } from "@/lib/types/skill";
+import { toDescriptor } from "@/lib/types/skill";
 import type { QueuedMessage } from "@/lib/types/queue";
 import { markGenerating, markIdle } from "@/lib/generation-tracker";
 import { useAutoSave } from "@/hooks/use-auto-save";
+import { buildSystemPrompt } from "@/lib/prompts/prompt-builder";
+import { truncateMessages } from "@/lib/truncate-messages";
+import { collectAttachments, stripOldAttachments } from "@/lib/attachments";
+import { getSystemSkills } from "@/lib/skills/system";
+import { executeClientTool } from "@/lib/tools/client-tool-executor";
 
 interface ChatContextProps {
   projectId?: string;
@@ -114,6 +120,17 @@ export function ChatProvider({
     [globalSkills, projectSkills],
   );
 
+  // Compute all skills (system + user-enabled) for prompt building and tool execution
+  const allSkills = useMemo(() => {
+    const systemSkills = getSystemSkills(preferences);
+    return [...systemSkills, ...allEnabledSkills];
+  }, [preferences, allEnabledSkills]);
+
+  // Build attachment store and collect descriptors for the system prompt
+  const attachmentStoreRef = useRef<Map<string, any>>(new Map());
+
+  const thinkingEnabled = preferences.aiModel?.includes("Thinking") ?? false;
+
   const [continuationNeeded, setContinuationNeeded] = useState(false);
   const continuationCountRef = useRef(0);
 
@@ -132,22 +149,67 @@ export function ChatProvider({
     api: "/api/chat",
     initialMessages,
     keepLastMessageOnError: true,
+    maxSteps: 25,
     body: {
-      files: fileSystem.serialize(),
-      projectId,
-      preferences,
+      modelId: preferences.aiModel,
       apiKey: apiKey || undefined,
-      globalRules: globalRules || undefined,
-      projectRules: projectRules || undefined,
-      skills: allEnabledSkills.length > 0 ? allEnabledSkills : undefined,
-      editorContext: {
-        selectedFile,
-        visibleRange: editorVisibleRange,
-      },
-      previewErrors: previewErrors.length > 0 ? previewErrors : undefined,
+      thinkingEnabled,
     },
-    onToolCall: ({ toolCall }) => {
+    experimental_prepareRequestBody: ({ messages: chatMessages, ...rest }: any) => {
+      // Build the system prompt client-side
+      const skillDescriptors = allSkills.map(toDescriptor);
+      const attachmentStore = collectAttachments(chatMessages);
+      attachmentStoreRef.current = attachmentStore;
+
+      const strippedMessages = stripOldAttachments(chatMessages);
+
+      const attachmentDescriptors = Array.from(attachmentStore.values()).map(
+        (a: any) => ({
+          name: a.name,
+          contentType: a.contentType,
+          isImage: a.isImage,
+        })
+      );
+
+      const systemMessage = {
+        role: "system" as const,
+        content: buildSystemPrompt(preferences, {
+          globalRules: globalRules || undefined,
+          projectRules: projectRules || undefined,
+          skills: skillDescriptors.length > 0 ? skillDescriptors : undefined,
+          attachments:
+            attachmentDescriptors.length > 0 ? attachmentDescriptors : undefined,
+          editorContext: {
+            selectedFile,
+            visibleRange: editorVisibleRange,
+          },
+          previewErrors: previewErrors.length > 0 ? previewErrors : undefined,
+        }),
+      };
+
+      const withSystem = [systemMessage, ...strippedMessages];
+      const truncated = truncateMessages(
+        withSystem,
+        thinkingEnabled ? 80_000 : undefined
+      );
+
+      return {
+        ...rest,
+        messages: truncated,
+        modelId: preferences.aiModel,
+        apiKey: apiKey || undefined,
+        thinkingEnabled,
+      };
+    },
+    onToolCall: async ({ toolCall }) => {
+      // Apply VFS side-effects for UI refresh (existing behavior)
       handleToolCall(toolCall);
+      // Return tool result string for the AI SDK tool loop
+      return executeClientTool(toolCall, {
+        fileSystem,
+        skills: allSkills,
+        attachmentStore: attachmentStoreRef.current,
+      });
     },
     onFinish: (_message, { finishReason }) => {
       if (

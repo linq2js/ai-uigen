@@ -2,7 +2,7 @@ import { openDB, type IDBPDatabase } from "idb";
 import type { Skill } from "@/lib/types/skill";
 
 const DB_NAME = "artifex";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 interface LocalProject {
   id: string;
@@ -17,6 +17,10 @@ interface LocalProject {
   totalOutputTokens: number;
   createdAt: Date;
   updatedAt: Date;
+  /** PostgreSQL project ID — null if never synced to the server. */
+  serverId?: string;
+  /** Timestamp of the last successful sync to the server. */
+  syncedAt?: number;
 }
 
 interface LocalCheckpoint {
@@ -36,15 +40,18 @@ let dbPromise: Promise<IDBPDatabase> | null = null;
 function getDB(): Promise<IDBPDatabase> {
   if (!dbPromise) {
     dbPromise = openDB(DB_NAME, DB_VERSION, {
-      upgrade(db) {
-        if (!db.objectStoreNames.contains("projects")) {
-          const store = db.createObjectStore("projects", { keyPath: "id" });
-          store.createIndex("updatedAt", "updatedAt");
+      upgrade(db, oldVersion) {
+        // v1 → create base stores
+        if (oldVersion < 1) {
+          const projectStore = db.createObjectStore("projects", { keyPath: "id" });
+          projectStore.createIndex("updatedAt", "updatedAt");
+          const checkpointStore = db.createObjectStore("checkpoints", { keyPath: "id" });
+          checkpointStore.createIndex("projectId", "projectId");
         }
-        if (!db.objectStoreNames.contains("checkpoints")) {
-          const store = db.createObjectStore("checkpoints", { keyPath: "id" });
-          store.createIndex("projectId", "projectId");
-        }
+        // v2 → sync metadata fields (serverId, syncedAt) are added to the
+        // LocalProject interface. IndexedDB is schema-less for record fields,
+        // so no store/index changes are needed — the version bump simply
+        // triggers the upgrade callback and signals the new schema.
       },
     });
   }

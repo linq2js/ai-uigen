@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor, act, cleanup } from "@testing-library/react";
+import { render, screen, cleanup } from "@testing-library/react";
 import { ChatProvider, useChat } from "../chat-context";
 import { useFileSystem } from "../file-system-context";
 import { useChat as useAIChat } from "@ai-sdk/react";
@@ -56,6 +56,28 @@ vi.mock("@/hooks/use-auto-save", () => ({
 vi.mock("@/lib/generation-tracker", () => ({
   markGenerating: vi.fn(),
   markIdle: vi.fn(),
+}));
+
+// Mock client-side prompt and tool modules
+vi.mock("@/lib/prompts/prompt-builder", () => ({
+  buildSystemPrompt: vi.fn(() => "mock system prompt"),
+}));
+
+vi.mock("@/lib/truncate-messages", () => ({
+  truncateMessages: vi.fn((msgs: any[]) => msgs),
+}));
+
+vi.mock("@/lib/attachments", () => ({
+  collectAttachments: vi.fn(() => new Map()),
+  stripOldAttachments: vi.fn((msgs: any[]) => msgs),
+}));
+
+vi.mock("@/lib/skills/system", () => ({
+  getSystemSkills: vi.fn(() => []),
+}));
+
+vi.mock("@/lib/tools/client-tool-executor", () => ({
+  executeClientTool: vi.fn(() => "mock tool result"),
 }));
 
 // Helper component to access chat context
@@ -144,14 +166,26 @@ describe("ChatContext", () => {
         api: "/api/chat",
         initialMessages,
         keepLastMessageOnError: true,
+        maxSteps: 25,
         body: expect.objectContaining({
-          files: mockFileSystem.serialize(),
-          projectId: "test-project",
+          modelId: "Haiku 4.5",
+          thinkingEnabled: false,
         }),
+        experimental_prepareRequestBody: expect.any(Function),
         onToolCall: expect.any(Function),
         onFinish: expect.any(Function),
       })
     );
+
+    // Body should NOT contain files, preferences, globalRules, etc.
+    const callArgs = (useAIChat as any).mock.calls[0][0];
+    expect(callArgs.body).not.toHaveProperty("files");
+    expect(callArgs.body).not.toHaveProperty("preferences");
+    expect(callArgs.body).not.toHaveProperty("globalRules");
+    expect(callArgs.body).not.toHaveProperty("projectRules");
+    expect(callArgs.body).not.toHaveProperty("skills");
+    expect(callArgs.body).not.toHaveProperty("editorContext");
+    expect(callArgs.body).not.toHaveProperty("previewErrors");
 
     expect(screen.getByTestId("messages").textContent).toBe("2");
   });
@@ -183,7 +217,7 @@ describe("ChatContext", () => {
     expect(form).toBeDefined();
   });
 
-  test("handles tool calls", () => {
+  test("handles tool calls and returns tool result", async () => {
     let onToolCallHandler: any;
 
     (useAIChat as any).mockImplementation((config: any) => {
@@ -197,9 +231,40 @@ describe("ChatContext", () => {
       </ChatProvider>
     );
 
-    const toolCall = { toolName: "test", args: {} };
-    onToolCallHandler({ toolCall });
+    const toolCall = { toolName: "str_replace_editor", args: { command: "view", path: "/test.js" } };
+    const result = await onToolCallHandler({ toolCall });
 
+    // handleToolCall applies VFS side-effects
     expect(mockHandleToolCall).toHaveBeenCalledWith(toolCall);
+    // executeClientTool returns the tool result string
+    expect(result).toBe("mock tool result");
+  });
+
+  test("experimental_prepareRequestBody builds system prompt and truncates messages", () => {
+    let experimental_prepareRequestBody: any;
+
+    (useAIChat as any).mockImplementation((config: any) => {
+      experimental_prepareRequestBody = config.experimental_prepareRequestBody;
+      return mockUseAIChat;
+    });
+
+    render(
+      <ChatProvider>
+        <TestComponent />
+      </ChatProvider>
+    );
+
+    const prepared = experimental_prepareRequestBody({
+      messages: [{ role: "user", content: "Hello" }],
+    });
+
+    // Should include messages with system prompt prepended
+    expect(prepared.messages).toBeDefined();
+    expect(prepared.messages.length).toBeGreaterThan(0);
+    expect(prepared.messages[0].role).toBe("system");
+
+    // Should include minimal config
+    expect(prepared.modelId).toBe("Haiku 4.5");
+    expect(prepared.thinkingEnabled).toBe(false);
   });
 });
