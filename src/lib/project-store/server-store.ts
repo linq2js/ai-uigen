@@ -12,6 +12,7 @@ import { saveProjectSkills } from "@/actions/save-project-skills";
 import { getProjectSkills } from "@/actions/get-project-skills";
 import { getCheckpoints } from "@/actions/get-checkpoints";
 import { createCheckpoint } from "@/actions/create-checkpoint";
+import { createAutoCheckpoint } from "@/actions/create-auto-checkpoint";
 import { deleteCheckpoint } from "@/actions/delete-checkpoint";
 import { restoreCheckpoint } from "@/actions/restore-checkpoint";
 import { togglePublish } from "@/actions/toggle-publish";
@@ -37,11 +38,12 @@ export function createServerStore(): ProjectStore {
     getProjectSkills,
     getCheckpoints,
     createCheckpoint,
+    createAutoCheckpoint,
     async deleteCheckpoint(checkpointId) {
       await deleteCheckpoint(checkpointId);
     },
     async restoreCheckpoint(checkpointId) {
-      await restoreCheckpoint(checkpointId);
+      return restoreCheckpoint(checkpointId);
     },
     togglePublish,
   };

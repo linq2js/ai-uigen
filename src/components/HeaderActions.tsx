@@ -17,10 +17,10 @@ import {
   ExternalLink,
   ChevronDown,
   Loader2,
+  Settings,
 } from "lucide-react";
 import { AuthDialog } from "@/components/auth/AuthDialog";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
-import { SettingsButton } from "@/components/settings/SettingsButton";
 
 import { signOut } from "@/actions";
 import { useProjectStore } from "@/lib/project-store/context";
@@ -214,7 +214,6 @@ export function HeaderActions({ user, projectId, published: initialPublished }: 
       <>
         <div className="flex gap-2 items-center">
           {exportDropdown}
-          <SettingsButton onClick={() => setSettingsOpen(true)} />
           <Popover open={profileOpen} onOpenChange={setProfileOpen}>
             <PopoverTrigger asChild>
               <button
@@ -226,6 +225,17 @@ export function HeaderActions({ user, projectId, published: initialPublished }: 
               </button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-44 p-1">
+              <button
+                onClick={() => {
+                  setProfileOpen(false);
+                  setSettingsOpen(true);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-700/60 rounded-md transition-colors"
+              >
+                <Settings className="h-4 w-4 text-neutral-400" />
+                Settings
+              </button>
+              <div className="border-t border-neutral-700/50 my-1" />
               <button
                 onClick={() => {
                   setProfileOpen(false);
@@ -331,8 +341,6 @@ export function HeaderActions({ user, projectId, published: initialPublished }: 
 
       {exportDropdown}
 
-      <SettingsButton onClick={() => setSettingsOpen(true)} />
-
       <Popover open={profileOpen} onOpenChange={setProfileOpen}>
         <PopoverTrigger asChild>
           <button
@@ -347,6 +355,16 @@ export function HeaderActions({ user, projectId, published: initialPublished }: 
           <div className="px-3 py-2 border-b border-neutral-700/50 mb-1">
             <p className="text-xs text-neutral-500 truncate">{user.email}</p>
           </div>
+          <button
+            onClick={() => {
+              setProfileOpen(false);
+              setSettingsOpen(true);
+            }}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-700/60 rounded-md transition-colors"
+          >
+            <Settings className="h-4 w-4 text-neutral-400" />
+            Settings
+          </button>
           <button
             onClick={() => {
               setProfileOpen(false);

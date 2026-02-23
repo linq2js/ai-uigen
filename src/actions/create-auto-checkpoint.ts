@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { CheckpointType } from "@/lib/project-store/types";
 
-export async function createCheckpoint(projectId: string, name: string) {
+export async function createAutoCheckpoint(projectId: string) {
   const session = await getSession();
 
   if (!session) {
@@ -21,21 +21,15 @@ export async function createCheckpoint(projectId: string, name: string) {
       throw new Error("Project not found");
     }
 
-    // Only count manual checkpoints toward the max-3 limit
-    const checkpoints = await prisma.checkpoint.findMany({
-      where: { projectId, type: { not: "auto" } },
-      orderBy: { createdAt: "asc" },
-      select: { id: true },
+    // Delete all existing auto-checkpoints for this project (keep max 1)
+    await prisma.checkpoint.deleteMany({
+      where: { projectId, type: "auto" },
     });
-
-    if (checkpoints.length >= 3) {
-      await prisma.checkpoint.delete({ where: { id: checkpoints[0].id } });
-    }
 
     const checkpoint = await prisma.checkpoint.create({
       data: {
-        name,
-        type: "manual",
+        name: `Auto: ${new Date().toLocaleString()}`,
+        type: "auto",
         data: project.data,
         projectId,
       },
@@ -44,7 +38,7 @@ export async function createCheckpoint(projectId: string, name: string) {
 
     return { ...checkpoint, type: checkpoint.type as CheckpointType };
   } catch (error) {
-    console.error("Failed to create checkpoint:", error);
-    throw new Error("Failed to create checkpoint");
+    console.error("Failed to create auto-checkpoint:", error);
+    throw new Error("Failed to create auto-checkpoint");
   }
 }

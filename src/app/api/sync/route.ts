@@ -7,6 +7,9 @@ import { getSession } from "@/lib/auth";
  * Returns `[{ id, updatedAt }]` for the given project IDs owned by the
  * authenticated user. Used by the client to compare local timestamps and
  * decide whether to push or pull.
+ *
+ * If `ids` is omitted, returns ALL projects for the user — used for
+ * discovering projects created on other devices.
  */
 export async function GET(req: Request) {
   const session = await getSession();
@@ -16,17 +19,21 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url);
   const idsParam = url.searchParams.get("ids");
-  if (!idsParam) {
-    return Response.json({ error: "Missing ids parameter" }, { status: 400 });
-  }
 
-  const ids = idsParam.split(",").filter(Boolean);
-  if (ids.length === 0) {
-    return Response.json([]);
+  const where: { userId: string; id?: { in: string[] } } = {
+    userId: session.userId,
+  };
+
+  if (idsParam) {
+    const ids = idsParam.split(",").filter(Boolean);
+    if (ids.length === 0) {
+      return Response.json([]);
+    }
+    where.id = { in: ids };
   }
 
   const projects = await prisma.project.findMany({
-    where: { id: { in: ids }, userId: session.userId },
+    where,
     select: { id: true, updatedAt: true },
   });
 

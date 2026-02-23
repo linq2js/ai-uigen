@@ -117,7 +117,8 @@ export function ProjectSidebar({
     try {
       const p = await store.getProjects();
       setProjects(p);
-    } catch {
+    } catch (err) {
+      console.error("[ProjectSidebar] Failed to load projects:", err);
       toast.error("Failed to load projects");
     } finally {
       setLoading(false);

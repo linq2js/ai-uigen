@@ -2,6 +2,7 @@
 
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import type { CheckpointType } from "@/lib/project-store/types";
 
 export async function getCheckpoints(projectId: string) {
   const session = await getSession();
@@ -16,8 +17,11 @@ export async function getCheckpoints(projectId: string) {
       project: { userId: session.userId },
     },
     orderBy: { createdAt: "desc" },
-    select: { id: true, name: true, createdAt: true },
+    select: { id: true, name: true, type: true, createdAt: true },
   });
 
-  return checkpoints;
+  return checkpoints.map((cp) => ({
+    ...cp,
+    type: (cp.type as CheckpointType) ?? "manual",
+  }));
 }

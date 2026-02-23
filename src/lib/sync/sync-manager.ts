@@ -1,22 +1,29 @@
 /**
- * SyncManager — debounced, online-aware background sync from IndexedDB → PostgreSQL.
+ * SyncManager — bidirectional, debounced, online-aware sync between
+ * IndexedDB and PostgreSQL.
  *
- * Each project gets at most one pending push at a time. Pushes are debounced
- * by 5 seconds and paused while the browser is offline.
+ * Push: debounced per-project, paused while offline.
+ * Pull: runs on startup and at a configurable interval, compares all
+ *       local projects' syncedAt against server updatedAt in one batch.
  */
 
-const DEBOUNCE_MS = 5_000;
+const PUSH_DEBOUNCE_MS = 5_000;
+const PULL_INTERVAL_MS = 30_000; // 30 s
 
 type PushFn = (projectId: string) => Promise<void>;
+type PullAllFn = () => Promise<void>;
 
 export class SyncManager {
-  private timers = new Map<string, ReturnType<typeof setTimeout>>();
-  private inflight = new Set<string>();
+  private pushTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private pushInflight = new Set<string>();
+  private pullInterval: ReturnType<typeof setInterval> | null = null;
   private online: boolean;
   private pushFn: PushFn;
+  private pullAllFn: PullAllFn;
 
-  constructor(pushFn: PushFn) {
+  constructor(pushFn: PushFn, pullAllFn: PullAllFn) {
     this.pushFn = pushFn;
+    this.pullAllFn = pullAllFn;
     this.online = typeof navigator !== "undefined" ? navigator.onLine : true;
 
     if (typeof window !== "undefined") {
@@ -25,64 +32,109 @@ export class SyncManager {
     }
   }
 
-  /** Enqueue a debounced push for the given project. */
-  enqueue(projectId: string): void {
-    // Clear any existing timer for this project
-    const existing = this.timers.get(projectId);
-    if (existing) clearTimeout(existing);
+  // -----------------------------------------------------------------------
+  // Lifecycle
+  // -----------------------------------------------------------------------
 
-    const timer = setTimeout(() => {
-      this.timers.delete(projectId);
-      this.flush(projectId);
-    }, DEBOUNCE_MS);
-
-    this.timers.set(projectId, timer);
-  }
-
-  /** Immediately push if online and not already in-flight. */
-  private async flush(projectId: string): Promise<void> {
-    if (!this.online || this.inflight.has(projectId)) {
-      // Re-enqueue so it gets pushed when conditions change
-      this.enqueue(projectId);
-      return;
+  /**
+   * Run the initial pull (awaitable) and start the interval timer.
+   * The returned promise resolves once the first pull completes (or fails),
+   * so callers can block the UI until the initial sync is done.
+   */
+  async start(): Promise<void> {
+    // Await the startup pull so the caller can show a loading indicator
+    if (this.online) {
+      try {
+        await this.pullAllFn();
+      } catch (err) {
+        console.error("[SyncManager] initial pull failed:", err);
+      }
     }
 
-    this.inflight.add(projectId);
-    try {
-      await this.pushFn(projectId);
-    } catch (err) {
-      console.error(`[SyncManager] push failed for ${projectId}:`, err);
-      // Re-enqueue for retry
-      this.enqueue(projectId);
-    } finally {
-      this.inflight.delete(projectId);
+    if (!this.pullInterval) {
+      this.pullInterval = setInterval(() => this.pullNow(), PULL_INTERVAL_MS);
     }
   }
 
-  private handleOnline = (): void => {
-    this.online = true;
-    // Flush all pending projects
-    for (const projectId of this.timers.keys()) {
-      clearTimeout(this.timers.get(projectId)!);
-      this.timers.delete(projectId);
-      this.flush(projectId);
-    }
-  };
-
-  private handleOffline = (): void => {
-    this.online = false;
-  };
-
-  /** Clean up event listeners. */
+  /** Clean up all timers and listeners. */
   destroy(): void {
-    for (const timer of this.timers.values()) {
-      clearTimeout(timer);
+    for (const timer of this.pushTimers.values()) clearTimeout(timer);
+    this.pushTimers.clear();
+
+    if (this.pullInterval) {
+      clearInterval(this.pullInterval);
+      this.pullInterval = null;
     }
-    this.timers.clear();
 
     if (typeof window !== "undefined") {
       window.removeEventListener("online", this.handleOnline);
       window.removeEventListener("offline", this.handleOffline);
     }
   }
+
+  // -----------------------------------------------------------------------
+  // Push (per-project, debounced)
+  // -----------------------------------------------------------------------
+
+  /** Enqueue a debounced push for the given project. */
+  enqueue(projectId: string): void {
+    const existing = this.pushTimers.get(projectId);
+    if (existing) clearTimeout(existing);
+
+    const timer = setTimeout(() => {
+      this.pushTimers.delete(projectId);
+      this.flushPush(projectId);
+    }, PUSH_DEBOUNCE_MS);
+
+    this.pushTimers.set(projectId, timer);
+  }
+
+  private async flushPush(projectId: string): Promise<void> {
+    if (!this.online || this.pushInflight.has(projectId)) {
+      this.enqueue(projectId);
+      return;
+    }
+
+    this.pushInflight.add(projectId);
+    try {
+      await this.pushFn(projectId);
+    } catch (err) {
+      console.error(`[SyncManager] push failed for ${projectId}:`, err);
+      this.enqueue(projectId);
+    } finally {
+      this.pushInflight.delete(projectId);
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Pull (batch, interval + on-demand)
+  // -----------------------------------------------------------------------
+
+  /** Trigger a pull cycle immediately (non-blocking). */
+  pullNow(): void {
+    if (!this.online) return;
+    this.pullAllFn().catch((err) =>
+      console.error("[SyncManager] pull failed:", err)
+    );
+  }
+
+  // -----------------------------------------------------------------------
+  // Network events
+  // -----------------------------------------------------------------------
+
+  private handleOnline = (): void => {
+    this.online = true;
+    // Flush all pending pushes
+    for (const projectId of [...this.pushTimers.keys()]) {
+      clearTimeout(this.pushTimers.get(projectId)!);
+      this.pushTimers.delete(projectId);
+      this.flushPush(projectId);
+    }
+    // And do a pull to pick up anything that happened while offline
+    this.pullNow();
+  };
+
+  private handleOffline = (): void => {
+    this.online = false;
+  };
 }

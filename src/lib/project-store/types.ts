@@ -38,9 +38,12 @@ export interface CloneProjectInput {
   fromMessageIndex?: number;
 }
 
+export type CheckpointType = "manual" | "auto";
+
 export interface CheckpointSummary {
   id: string;
   name: string;
+  type: CheckpointType;
   createdAt: Date;
 }
 
@@ -60,7 +63,8 @@ export interface ProjectStore {
   getProjectSkills(id: string): Promise<Skill[]>;
   getCheckpoints(projectId: string): Promise<CheckpointSummary[]>;
   createCheckpoint(projectId: string, name: string): Promise<CheckpointSummary>;
+  createAutoCheckpoint(projectId: string): Promise<CheckpointSummary>;
   deleteCheckpoint(checkpointId: string): Promise<void>;
-  restoreCheckpoint(checkpointId: string): Promise<void>;
+  restoreCheckpoint(checkpointId: string): Promise<{ projectId: string }>;
   togglePublish(id: string): Promise<boolean>;
 }

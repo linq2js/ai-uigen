@@ -22,6 +22,7 @@ import { useProjectStore } from "@/lib/project-store/context";
 interface Checkpoint {
   id: string;
   name: string;
+  type: "manual" | "auto";
   createdAt: Date;
 }
 
@@ -140,47 +141,88 @@ export function CheckpointDropdown({ projectId }: { projectId: string }) {
           </div>
 
           <div className="max-h-60 overflow-y-auto">
-            {checkpoints.length === 0 ? (
-              <div className="px-3 py-6 text-center text-sm text-neutral-500">
-                No checkpoints yet.
-              </div>
-            ) : (
-              checkpoints.map((cp) => (
-                <div
-                  key={cp.id}
-                  className="flex items-center justify-between px-3 py-2.5 hover:bg-neutral-800/50 group"
-                >
-                  <div className="min-w-0">
-                    <div className="text-sm text-neutral-200 truncate">
-                      {cp.name}
-                    </div>
-                    <div className="text-xs text-neutral-500">
-                      {timeAgo(cp.createdAt)}
-                    </div>
+            {(() => {
+              const autoCheckpoint = checkpoints.find((cp) => cp.type === "auto");
+              const manualCheckpoints = checkpoints.filter((cp) => cp.type !== "auto");
+
+              if (!autoCheckpoint && manualCheckpoints.length === 0) {
+                return (
+                  <div className="px-3 py-6 text-center text-sm text-neutral-500">
+                    No checkpoints yet.
                   </div>
-                  <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-neutral-400 hover:text-neutral-200"
-                      onClick={() => setRestoreTarget(cp)}
-                      title="Restore"
+                );
+              }
+
+              return (
+                <>
+                  {autoCheckpoint && (
+                    <div className="border-b border-neutral-800">
+                      <div className="px-3 pt-2 pb-1">
+                        <span className="text-[10px] font-medium uppercase tracking-wider text-amber-500">
+                          Before last AI turn
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between px-3 py-2.5 hover:bg-amber-900/10 group">
+                        <div className="min-w-0">
+                          <div className="text-sm text-amber-200/90 truncate">
+                            {autoCheckpoint.name}
+                          </div>
+                          <div className="text-xs text-neutral-500">
+                            {timeAgo(autoCheckpoint.createdAt)}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-amber-400 hover:text-amber-200"
+                            onClick={() => setRestoreTarget(autoCheckpoint)}
+                            title="Restore"
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {manualCheckpoints.map((cp) => (
+                    <div
+                      key={cp.id}
+                      className="flex items-center justify-between px-3 py-2.5 hover:bg-neutral-800/50 group"
                     >
-                      <RotateCcw className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-neutral-400 hover:text-red-400"
-                      onClick={() => handleDelete(cp.id)}
-                      title="Delete"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              ))
-            )}
+                      <div className="min-w-0">
+                        <div className="text-sm text-neutral-200 truncate">
+                          {cp.name}
+                        </div>
+                        <div className="text-xs text-neutral-500">
+                          {timeAgo(cp.createdAt)}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-neutral-400 hover:text-neutral-200"
+                          onClick={() => setRestoreTarget(cp)}
+                          title="Restore"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-neutral-400 hover:text-red-400"
+                          onClick={() => handleDelete(cp.id)}
+                          title="Delete"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              );
+            })()}
           </div>
         </PopoverContent>
       </Popover>

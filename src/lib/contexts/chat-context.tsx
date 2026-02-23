@@ -301,10 +301,30 @@ export function ChatProvider({
     setQueue([]);
   }, [stop]);
 
+  const store = useProjectStore();
+
+  // Force-save file system and create auto-checkpoint before an AI turn.
+  // Non-blocking: errors are logged but don't prevent generation.
+  const createAutoCheckpointBeforeTurn = useCallback(async () => {
+    if (!projectId) return;
+    try {
+      const data = fileSystem.serialize();
+      // Skip if project has no files yet
+      if (Object.keys(data).length === 0) return;
+      // Force-save current file system to IndexedDB (bypass auto-save debounce)
+      await store.saveProjectData(projectId, JSON.stringify(data));
+      await store.createAutoCheckpoint(projectId);
+    } catch (err) {
+      console.error("[auto-checkpoint] Failed:", err);
+    }
+  }, [projectId, fileSystem, store]);
+
   const handleSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>, options?: ChatRequestOptions) => {
       continuationCountRef.current = 0;
       if (!isGenerating && queue.length === 0) {
+        // Fire-and-forget auto-checkpoint before sending
+        createAutoCheckpointBeforeTurn();
         sdkHandleSubmit(e, options);
       } else {
         e.preventDefault();
@@ -318,7 +338,7 @@ export function ChatProvider({
         setInput("");
       }
     },
-    [isGenerating, queue.length, sdkHandleSubmit, enqueueMessage, input, setInput]
+    [isGenerating, queue.length, sdkHandleSubmit, enqueueMessage, input, setInput, createAutoCheckpointBeforeTurn]
   );
 
   // Auto-continue / auto-dequeue: when SDK becomes ready, either send a
@@ -344,6 +364,9 @@ export function ChatProvider({
     const [next, ...rest] = queue;
     setQueue(rest);
 
+    // Auto-checkpoint before dequeued user messages
+    createAutoCheckpointBeforeTurn();
+
     append(
       { role: "user", content: next.content },
       next.attachments ? { experimental_attachments: next.attachments } : undefined
@@ -352,10 +375,9 @@ export function ChatProvider({
     setTimeout(() => {
       processingRef.current = false;
     }, 0);
-  }, [status, queue, continuationNeeded, append]);
+  }, [status, queue, continuationNeeded, append, createAutoCheckpointBeforeTurn]);
 
   // Persist messages to IndexedDB for local/guest users
-  const store = useProjectStore();
   useEffect(() => {
     if (!projectId || !store.isLocal) return;
     if (messages.length === 0) return;

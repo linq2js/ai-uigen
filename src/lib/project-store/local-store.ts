@@ -35,9 +35,12 @@ export function createLocalStore(): ProjectStore {
     getProjectSkills: localGetProjectSkills,
     getCheckpoints: localGetCheckpoints,
     createCheckpoint: localCreateCheckpoint,
+    async createAutoCheckpoint(projectId) {
+      return localCreateCheckpoint(projectId, `Auto: ${new Date().toLocaleString()}`, "auto");
+    },
     deleteCheckpoint: localDeleteCheckpoint,
     async restoreCheckpoint(checkpointId) {
-      await localRestoreCheckpoint(checkpointId);
+      return localRestoreCheckpoint(checkpointId);
     },
     async togglePublish() {
       // Publishing is not available for local/guest users
